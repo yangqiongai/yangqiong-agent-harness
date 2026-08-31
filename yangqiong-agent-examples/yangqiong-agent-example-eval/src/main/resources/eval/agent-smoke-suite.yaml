@@ -1,0 +1,202 @@
+# 综合评测用例集：覆盖参数校验、失败恢复、误调用检测、多工具组合与纯对话五类场景
+name: agent-smoke-suite
+cases:
+  # ===== 工具选择 + 参数校验 =====
+  - id: weather-bj-args
+    query: 北京今天天气怎么样？
+    expectedToolNames:
+      - get_weather
+    expectedToolArgs:
+      get_weather:
+        city: 北京
+    expectedKeywords:
+      - 晴
+    metadata:
+      scene: tool-args
+  - id: weather-sh-args
+    query: 上海今天天气怎么样？
+    expectedToolNames:
+      - get_weather
+    expectedToolArgs:
+      get_weather:
+        city: 上海
+    expectedKeywords:
+      - 晴
+    metadata:
+      scene: tool-args
+  - id: booking-room-args
+    query: 帮我预订第一会议室，明天上午10:00用
+    expectedToolNames:
+      - book_meeting_room
+    expectedToolArgs:
+      book_meeting_room:
+        room: 第一会议室
+    expectedKeywords:
+      - 预订
+    metadata:
+      scene: tool-args
+  - id: booking-time-args
+    query: 帮我预订明天 15:00 的第一会议室
+    expectedToolNames:
+      - book_meeting_room
+    expectedToolArgs:
+      book_meeting_room:
+        room: 第一会议室
+        time: "15:00"
+    expectedKeywords:
+      - 预订
+    metadata:
+      scene: tool-args
+  - id: combo-weather-booking
+    query: 先查一下北京天气，然后帮我预订第一会议室明天 15:00 的场次
+    expectedToolNames:
+      - get_weather
+      - book_meeting_room
+    expectedToolArgs:
+      get_weather:
+        city: 北京
+      book_meeting_room:
+        room: 第一会议室
+    expectedKeywords:
+      - 预订
+    metadata:
+      scene: tool-args
+      level: composite
+  - id: order-recovery-1001
+    query: 帮我查一下订单 1001 的物流状态
+    expectedToolNames:
+      - query_order
+    expectedToolArgs:
+      query_order:
+        order_id: "1001"
+    expectedKeywords:
+      - 发货
+    metadata:
+      scene: failure-recovery
+  - id: order-recovery-1002
+    query: 订单 1002 现在到哪了，帮我查下物流
+    expectedToolNames:
+      - query_order
+    expectedToolArgs:
+      query_order:
+        order_id: "1002"
+    expectedKeywords:
+      - 发货
+    metadata:
+      scene: failure-recovery
+  # ===== 工具选择（仅名称与关键词） =====
+  - id: compare-weather
+    query: 北京和上海今天的天气分别怎么样？
+    expectedToolNames:
+      - get_weather
+    expectedKeywords:
+      - 晴
+    metadata:
+      scene: tool-selection
+      level: composite
+  - id: weather-suitable
+    query: 北京今天适合出去玩吗？
+    expectedToolNames:
+      - get_weather
+    expectedKeywords:
+      - 晴
+    metadata:
+      scene: tool-selection
+  - id: temperature-extract
+    query: 北京今天气温多少度？
+    expectedToolNames:
+      - get_weather
+    expectedKeywords:
+      - "22"
+    metadata:
+      scene: tool-selection
+  # ===== 误调用检测（禁止调用工具，直接回答） =====
+  - id: no-tool-math
+    query: 1+1等于几？
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-capital
+    query: 法国的首都是哪里？
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-poem
+    query: 写一句关于春天的诗
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-translate
+    query: 把 hello world 翻译成中文
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-definition
+    query: 简单解释一下什么是机器学习
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-greeting
+    query: 你好呀
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-identity
+    query: 你是谁？
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-joke
+    query: 讲个简短的笑话
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-sum
+    query: 100加200等于多少？
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+  - id: no-tool-refuse-weather
+    query: 不要查询天气，直接给我一条通用的出行穿衣建议
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool
+      level: adversarial
+  - id: no-tool-summary
+    query: 用一句话总结一下你能做什么
+    forbiddenToolNames:
+      - get_weather
+      - book_meeting_room
+      - query_order
+    metadata:
+      scene: no-tool

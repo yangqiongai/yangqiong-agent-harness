@@ -1,0 +1,7 @@
+rules:
+  - name: classpath-forbidden
+    regex: classpath-forbidden-word
+    action: BLOCK
+    targets: [INPUT]
+    enabled: true
+    description: 经classpath外部加载的护栏规则

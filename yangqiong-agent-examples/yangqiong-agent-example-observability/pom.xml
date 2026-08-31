@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.yangqiong.agent</groupId>
+        <artifactId>yangqiong-agent-examples</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>yangqiong-agent-example-observability</artifactId>
+    <packaging>jar</packaging>
+
+    <name>yangqiong-agent-example-observability</name>
+    <description>泱穹智能体框架可观测性扩展示例：OTLP Trace 导出 + Micrometer 指标采集 + 指标快照打印</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.yangqiong.agent</groupId>
+            <artifactId>yangqiong-agent-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.yangqiong.agent</groupId>
+            <artifactId>yangqiong-agent-model-providers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.yangqiong.agent</groupId>
+            <artifactId>yangqiong-agent-observability</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <!-- 演示直接使用 SimpleMeterRegistry 读取并打印指标快照 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 运行：mvn -pl yangqiong-agent-examples/yangqiong-agent-example-observability exec:java -Dexec.mainClass=com.yangqiong.agent.harness.example.observability.ObservabilityExample -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

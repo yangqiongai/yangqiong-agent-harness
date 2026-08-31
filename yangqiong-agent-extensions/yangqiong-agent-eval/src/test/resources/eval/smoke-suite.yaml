@@ -1,0 +1,28 @@
+# 冒烟评测用例集：验证工具选择与关键词命中的基础能力
+name: smoke-suite
+cases:
+  - id: weather-tool-call
+    query: 北京今天天气怎么样？
+    expectedToolNames:
+      - search
+    expectedKeywords:
+      - 天气
+    metadata:
+      scene: tool-selection
+  - id: greeting-no-tool
+    query: 你好，请做个自我介绍
+    expectedKeywords:
+      - 你好
+    metadata:
+      scene: chat
+  - id: multi-tool-call
+    query: 查一下北京天气并把它加到明天的日程里
+    expectedToolNames:
+      - search
+      - calendar
+    expectedKeywords:
+      - 天气
+      - 日程
+    metadata:
+      scene: tool-selection
+      level: composite

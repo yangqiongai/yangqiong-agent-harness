@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+# 泱穹智能体服务化示例配置
+agent:
+  # agent 数据目录（工作区/记忆/检查点落盘位置）
+  server:
+    root-dir: ./agent-data
+  # 模型端点：留空自动发现本机 Ollama（默认 http://localhost:11434）；可显式指定，例如
+  # endpoint-base-url: http://localhost:11434
+  # endpoint-base-url:
+  # 模型名称：留空自动发现；显式时可填如 deepseek-r1
+  # model-name: deepseek-r1
+
+logging:
+  level:
+    root: INFO

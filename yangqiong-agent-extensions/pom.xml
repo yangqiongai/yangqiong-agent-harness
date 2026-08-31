@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.yangqiong.agent</groupId>
+        <artifactId>yangqiong-agent-harness</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>yangqiong-agent-extensions</artifactId>
+    <packaging>pom</packaging>
+
+    <name>yangqiong-agent-extensions</name>
+    <description>泱穹智能体框架共享存储扩展模块聚合</description>
+
+    <modules>
+        <module>yangqiong-agent-store-jdbc</module>
+        <module>yangqiong-agent-store-redis</module>
+        <module>yangqiong-agent-store-vector</module>
+        <module>yangqiong-agent-local-agent</module>
+        <module>yangqiong-agent-server</module>
+        <module>yangqiong-agent-cron</module>
+        <module>yangqiong-agent-notify</module>
+        <module>yangqiong-agent-trigger</module>
+        <module>yangqiong-agent-observability</module>
+        <module>yangqiong-agent-eval</module>
+        <module>yangqiong-agent-model-providers</module>
+        <module>yangqiong-agent-paradigms</module>
+    </modules>
+</project>

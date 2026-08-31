@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.yangqiong.agent</groupId>
+        <artifactId>yangqiong-agent-examples</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>yangqiong-agent-example-paradigms</artifactId>
+    <packaging>jar</packaging>
+
+    <name>yangqiong-agent-example-paradigms</name>
+    <description>泱穹智能体框架执行范式示例：经HarnessRuntimeBuilder挂载ReAct/PlanExecute/ReWoo/Reflexion/SelfAsk/SelfRefine与Router路由，使用真实大模型验证各范式的可观测证据（消耗真实LLM token）</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.yangqiong.agent</groupId>
+            <artifactId>yangqiong-agent-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.yangqiong.agent</groupId>
+            <artifactId>yangqiong-agent-paradigms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.yangqiong.agent</groupId>
+            <artifactId>yangqiong-agent-model-providers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 运行：mvn -pl yangqiong-agent-examples/yangqiong-agent-example-paradigms exec:java -Dexec.mainClass=com.yangqiong.agent.harness.examples.paradigms.ParadigmExample -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

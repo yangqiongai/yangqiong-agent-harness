@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.yangqiong.agent</groupId>
+        <artifactId>yangqiong-agent-examples</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>yangqiong-agent-example-spring-boot</artifactId>
+    <packaging>jar</packaging>
+
+    <name>yangqiong-agent-example-spring-boot</name>
+    <description>泱穹智能体框架 Spring Boot Web 示例：通过 Starter 自动装配接入</description>
+
+    <properties>
+        <spring-boot.version>3.5.4</spring-boot.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot 版本统一由 BOM 管理，仅示例模块引入 -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- 泱穹 Starter：自动装配模型、运行时与共享存储 -->
+        <dependency>
+            <groupId>com.yangqiong.agent</groupId>
+            <artifactId>yangqiong-agent-spring-boot-starter</artifactId>
+        </dependency>
+        <!-- Web 支撑 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

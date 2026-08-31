@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.yangqiong.agent</groupId>
+        <artifactId>yangqiong-agent-harness</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>yangqiong-agent-bom</artifactId>
+    <packaging>pom</packaging>
+
+    <name>yangqiong-agent-bom</name>
+    <description>泱穹智能体框架 BOM，统一对齐全部模块坐标与版本</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- 核心引擎 -->
+            <dependency>
+                <groupId>com.yangqiong.agent</groupId>
+                <artifactId>yangqiong-agent-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- Spring Boot Starter -->
+            <dependency>
+                <groupId>com.yangqiong.agent</groupId>
+                <artifactId>yangqiong-agent-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- 共享存储扩展 -->
+            <dependency>
+                <groupId>com.yangqiong.agent</groupId>
+                <artifactId>yangqiong-agent-store-jdbc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yangqiong.agent</groupId>
+                <artifactId>yangqiong-agent-store-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- 本地模式扩展 -->
+            <dependency>
+                <groupId>com.yangqiong.agent</groupId>
+                <artifactId>yangqiong-agent-local-agent</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>
