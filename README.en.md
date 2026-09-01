@@ -44,23 +44,36 @@ The real proving ground for agents is the enterprise production environment: int
 
 For the past two years Python dominated agent development and Java developers had to hand-stitch HTTP calls. **As of 2026**, that has changed: Java now has multiple production-ready frameworks:
 
-| Framework | Positioning | Form | Planning Mode | MCP | Durable Checkpointing | Multi-Paradigm / Auto-Routing | Multi-Agent Orchestration | Dynamic Sub-agents | Reliable Tool Execution | Middleware Chain | Eval / Observability | Extension Ecosystem |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Spring AI** | Official Spring AI ecosystem (Broadcom) | ⚠️ Tool/assembly (agent loop DIY) | ReAct loop | ✅ | ❌ | ❌ | ❌ | ❌ | ⚠️ | ✅ Advisor | ✅ / ✅ Micrometer | ✅ Spring ecosystem |
-| **LangChain4j** | Framework-agnostic, 20+ model providers | ⚠️ Tool/assembly (AI Services composition) | ReAct loop | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ | ⚠️ Event listeners | ❌ / ✅ Event observation | ✅ Modular SPI |
-| **Semantic Kernel (Java)** | Microsoft cross-language SDK | ⚠️ Assembly SDK (weak Java agent) | ReAct loop | ✅ | ❌ | ❌ | ⚠️ Limited on Java | ⚠️ | ⚠️ Filter interceptable | ✅ Filter | ❌ / ✅ OTel | ⚠️ Few connectors |
-| **Google ADK (Java)** | Google Agent Development Kit | ✅ Out-of-the-box agent framework | Hierarchical + Planner | ✅ | ✅ | ⚠️ Planner | ✅ Sequential / parallel / loop / handoff | ⚠️ Build-time composition | ⚠️ | ✅ Callback | ✅ / ✅ | ⚠️ Google-centric |
-| **AgentScope (Java)** | Alibaba multi-agent framework (ReAct + Harness engineering) | ✅ Out-of-the-box agent framework | ReAct + Plan/Reflect | ✅ | ✅ (distributed session resume) | ⚠️ Orchestration strategies | ⚠️ Supervisor spawn + A2A delegation | ✅ Markdown declaration + runtime spawn | ⚠️ Async tools | ✅ Multi-stage hooks | ❌ / ✅ Studio | ⚠️ Modular but nascent |
-| **Yangqiong Agent Harness** | **Enterprise Java agent runtime** | ✅ **Out-of-the-box (engine / paradigms / orchestration / eval built-in)** | 6 planning modes + auto-routing | ✅ | ✅ | ✅ **6 paradigms** | ✅ **6-strategy orchestration** | ✅ **Declarative builder fully configurable (model/tools/permissions/paradigm mounting) + runtime dynamic spawn** | ✅ **Schema validation + timeout wrapping + backoff retry + fault-injection tested** | ✅ Reactive onion model | ✅ **Dual-judge eval + stability runs** / ✅ OTel + cost accounting | ✅ **12 official extension modules + SPI auto-discovery** |
+| Dimension | **Yangqiong Agent Harness** | Spring AI | LangChain4j | AgentScope (Java) |
+| --- | --- | --- | --- | --- |
+| Positioning | **Enterprise Java agent runtime** | Official Spring AI ecosystem | Framework-agnostic, 20+ model providers | Alibaba multi-agent framework |
+| Form | ✅ **Out-of-the-box agent framework** | ⚠️ Tool/assembly | ⚠️ Tool/assembly | ✅ Agent framework |
+| Planning Mode | ✅ **AgentLoop 6 paradigms** | ReAct loop | ReAct loop | ReAct loop |
+| MCP | ✅ **Multi-format parsing + custom assembly** | ✅ | ✅ | ✅ |
+| Durable Checkpointing | ✅ | ❌ | ❌ | ✅ |
+| Human-in-the-loop (approval / clarification) | ✅ **Approval pause + ledger resume / ask_user clarification** | ❌ | ❌ | ⚠️ Interrupt concept, no resume loop |
+| Multi-Paradigm / Auto-Routing | ✅ **6 paradigms** | ❌ | ❌ | ⚠️ Orchestration strategies |
+| Multi-Agent Orchestration | ✅ **6-strategy orchestration** | ❌ | ❌ | ⚠️ Supervisor spawn + A2A delegation |
+| Dynamic Sub-agents | ✅ **Fully configurable builder + runtime spawn** | ❌ | ⚠️ | ✅ Markdown declaration + runtime spawn |
+| Reliable Tool Execution | ✅ **Validation + timeout + retry** | ⚠️ | ⚠️ | ⚠️ Async tools |
+| Plan Mode | ✅ **Plan-then-execute, readable plan state** | ❌ | ❌ | ❌ |
+| Structured-Output Reliability | ✅ **3-tier (native JSON / fallback / validation-retry)** | ⚠️ Basic field mapping | ⚠️ Basic type mapping | ⚠️ |
+| Cost & Traffic Governance | ✅ **Budget / token metering / semantic cache / rate limit** | ⚠️ Micrometer metrics | ⚠️ Token estimation | ❌ |
+| Guardrails & Injection Detection | ✅ **I/O guardrails + prompt-injection detection + moderation** | ⚠️ Extensible advisors | ⚠️ Basic built-in guardrails | ❌ |
+| Middleware Chain | ✅ Reactive onion | ✅ Advisor | ⚠️ Event listeners | ✅ Multi-stage hooks |
+| Eval / Observability | ✅ **Dual-judge + stability runs** / ✅ OTel | ✅ / ✅ Micrometer | ❌ / ✅ Event observation | ❌ / ✅ Studio |
+| Extension Ecosystem | ✅ **12 extensions + SPI** | ✅ Spring ecosystem | ✅ Modular SPI | ⚠️ Nascent |
+| Integration Form | ✅ **Pure Java SE + Spring Boot Starter, one-command local mode** | ⚠️ Spring Boot only | ⚠️ Manual wiring | ✅ Standalone |
 
-> Background: Spring AI ships a convenient Starter backed by the Spring ecosystem; LangChain4j reached 1.0 GA in May 2025 with high developer adoption per JetBrains surveys, thanks to being framework-agnostic with broad provider coverage and built-in guardrails. Both are 1.0 GA and support MCP. AgentScope Java 2.0 went GA in 2026, known for its "two-layer agent architecture" (ReActAgent reasoning core + HarnessAgent engineering layer) and distributed deployment.
+> Note: **Semantic Kernel (Java)** and **Google ADK (Java)** are excluded from the table — the former is a cross-language SDK with a thin Java agent story (the agent loop is essentially DIY), and the latter is deeply bound to the Google ecosystem (Vertex AI / Gemini), making it impractical outside it. Neither is competitive in real-world enterprise projects, so they are not primary comparison targets.
+
 
 ### 2. Pain points: the "last mile" to enterprise production is still missing
 
 Mature frameworks make calling LLMs from Java easy, but for **real high-value production systems** there are common gaps:
 
 - **Framework coupling** — Spring AI is deeply bound to Spring Boot; LangChain4j is framework-agnostic but still needs manual wiring under Spring. Hard to land uniformly in pure-Java / multi-framework environments.
-- **Durable checkpointing largely absent** — as the table shows, Spring AI, LangChain4j and Semantic Kernel lack **mid-workflow state persistence (Checkpointing)**; interrupted long tasks cannot resume.
+- **Durable checkpointing largely absent** — as the table shows, Spring AI and LangChain4j lack **mid-workflow state persistence (Checkpointing)**; interrupted long tasks cannot resume.
 - **Missing production governance** — multi-turn sessions lack cost budgets, token metering, rate limiting, model routing/fallback; distributed run locks and consistent cross-node scheduling are rare.
 - **Orchestration stuck at "single agent + tools"** — multi-agent handoff, automatic task orchestration, sub-agent mutual exclusion and result aggregation are often borrowed concepts without fine-grained state machines and governance.
 
@@ -69,10 +82,11 @@ Mature frameworks make calling LLMs from Java easy, but for **real high-value pr
 Yangqiong Agent Harness is designed against these gaps — **complementary, not reinventing the wheel**:
 
 - ✅ **Zero framework coupling** — no Spring required; runs on pure Java SE, and fits naturally into Spring Boot / Quarkus / microservice environments alike
-- ✅ **First-class durability** — `AgentRunStore` / `CheckpointStore` checkpoint resume, `RunLockStore` distributed mutual exclusion for cross-node consistent scheduling (authoritative circuit breaker, no "fake resume")
+- ✅ **Native durable execution** — `AgentRunStore` / `CheckpointStore` checkpoint resume, `RunLockStore` distributed mutual exclusion for cross-node consistent scheduling
+- ✅ **Closed-loop human-in-the-loop** — tool approval pause + ledger resume, ask_user clarification resume; long-running tasks stay safe and controllable
 - ✅ **Full production governance out of the box** — cost budgets, token metering, model routing/fallback/retry, semantic caching and rate limiting
-- ✅ **Mature multi-agent orchestration** — sub-agent delegation, automatic task orchestration, handoff, result aggregation, backed by state machines and permission approval
-- ✅ **Strong engineering guarantees** — static typing, compile-time validation, 900+ unit tests (100+ test classes) in core alone, safety guardrails and audit loop
+- ✅ **Mature multi-agent orchestration** — sub-agent delegation, 6-strategy orchestration, handoff, result aggregation, backed by state machines and the permission system
+- ✅ **Strong engineering guarantees** — static typing, compile-time validation, 900+ unit tests (100+ test classes) in core alone, dual-judge evaluation and full-link observability
 
 > In short: Spring AI and LangChain4j answer "can Java call an LLM"; Yangqiong Agent Harness answers "can it run **stably and controllably into enterprise production**".
 
@@ -93,6 +107,13 @@ Yangqiong Agent Harness is designed against these gaps — **complementary, not 
 | Observability | Full-link tracing, token metering, cost accounting, evaluation, scoring reports |
 | Planning | Plan Mode, MCP protocol, Skill management, RAG retrieval augmentation |
 
+***
+
+## Architecture
+
+![Yangqiong Agent Harness layered architecture](https://yangqiong-1306352078.cos.ap-shanghai.myqcloud.com/website/biz/architecture-overview.jpg)
+
+***
 
 ## Capability Map
 
@@ -148,7 +169,7 @@ Yangqiong Agent Harness is a **Maven multi-module project** — the core has zer
 <dependency>
     <groupId>com.yangqiong.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
