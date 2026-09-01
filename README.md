@@ -47,7 +47,7 @@
 | 框架                         | 定位                             | 框架形态                          | 规划模式                 | MCP | 断点持久化      | 多范式引擎/自动路由 | 多代理编排                     | 子代理动态生成                                        | 工具可靠执行                                 | 中间件链       | 评测/可观测                              | 扩展生态                       |
 | -------------------------- | ------------------------------ | ----------------------------- | -------------------- | --- | ---------- | ---------- | ------------------------- | ---------------------------------------------- | -------------------------------------- | ---------- | ----------------------------------- | -------------------------- |
 | **Spring AI**              | Spring 官方 AI 生态（Broadcom）      | ⚠️ 工具/组装类（Agent 循环需自行拼装）      | ReAct 循环             | ✅   | ❌          | ❌          | ❌                         | ❌                                              | ⚠️                                     | ✅ Advisor  | ✅ / ✅ Micrometer                    | ✅ Spring 生态                |
-| **LangChain4j**            | 框架无关、20+ 模型提供方                 | ⚠️ 工具/组装类（AI Services 组装式）    | ReAct 循环             | ✅   | ❌          | ❌          | ❌                         | ❌                                              | ⚠️                                     | ⚠️ 事件监听    | ❌ / ✅ 事件观测                          | ✅ 模块化 SPI                  |
+| **LangChain4j**            | 框架无关、20+ 模型提供方                 | ⚠️ 工具/组装类（AI Services 组装式）    | ReAct 循环             | ✅   | ❌          | ❌          | ❌                         | ⚠️                                     | ⚠️                                     | ⚠️ 事件监听    | ❌ / ✅ 事件观测                          | ✅ 模块化 SPI                  |
 | **Semantic Kernel (Java)** | Microsoft 跨语言 SDK              | ⚠️ 组装类 SDK（Java 端 Agent 弱）    | ReAct 循环             | ✅   | ❌          | ❌          | ⚠️ Java 端有限               | ⚠️                                             | ⚠️ Filter 可拦截                          | ✅ Filter   | ❌ / ✅ OTel                          | ⚠️ 连接器较少                   |
 | **Google ADK (Java)**      | Google Agent 开发套件              | ✅ 开箱智能体框架                     | 分层式 + Planner        | ✅   | ✅          | ⚠️ Planner | ✅ 顺序/并行/循环/移交             | ⚠️ 构建时组合                                       | ⚠️                                     | ✅ Callback | ✅ / ✅                               | ⚠️ Google 生态为主             |
 | **AgentScope (Java)**      | 阿里开源多智能体框架（ReAct + Harness 工程） | ✅ 开箱智能体框架                     | ReAct + Plan/Reflect | ✅   | ✅（分布式会话恢复） | ⚠️ 编排策略    | ⚠️ Supervisor 派生 + A2A 委派 | ✅ Markdown 声明 + 运行时派生                          | ⚠️ 异步工具                                | ✅ 多阶段 Hook | ❌ / ✅ Studio                        | ⚠️ 模块化但生态起步                |
@@ -103,188 +103,27 @@
 
 ***
 
-## 功能模块详解
+## 功能模块速览
 
-### 模型接入层（model）
-
-统一 `AgentModel` 抽象，一套接口对接多模型厂商，并内置完整的生产级增强能力。
-
-- **多厂商支持**：OpenAI、Anthropic、通义千问 DashScope、Gemini、Ollama、通用 HTTP
-- **协议适配**：`OpenAI / Anthropic / DashScope / Ollama / Gemini` 协议适配器，屏蔽厂商请求/响应与流式差异（OpenAI 内置于 core，其余经 `yangqiong-agent-model-providers` 扩展提供，支持 SPI 自动发现）
-- **模型路由**：`HealthAwareModelRouter` 基于健康状态在候选模型间路由，提升可用性
-- **降级**：`FallbackModel` 主模型失败自动切换备用模型
-- **重试**：`RetryableModelCaller` 支持退避重试
-- **缓存**：`CachingModelCaller` + `SemanticCachingModelCaller`（语义缓存）+ 本地缓存
-- **限流**：`TokenBucketRateLimiter` 令牌桶限流 + 模型级限流注册
-- **成本与计量**：`CostTracker`、`ModelPricing` 定价库、Token 用量统计
-- **模型工厂**：`HarnessModelFactory` + `ModelResponseParser` 统一解析
-
-```
-统一 AgentModel 接口：AgentChatResponse / AgentGenerateOptions / TokenMetrics
-  ├── OpenAIChatModel      └─ 协议适配器 Adapter（屏蔽厂商差异）
-  ├── AnthropicChatModel
-  ├── DashScopeChatModel    ┌─ 路由 RoutingModel ─ HealthAwareModelRouter
-  ├── OllamaChatModel       ├─ 降级 FallbackModel
-  └── HttpChatModel         ├─ 重试 RetryableModelCaller
-                            ├─ 缓存 Caching / SemanticCaching
-                            └─ 限流 RateLimitedModel · 成本 CostTracker
-```
-
-### 工具执行层（tool / mcp / web）
-
-- **通用执行器**：`ToolExecutor` 统一调度，`HarnessToolkit` 线程安全注册，`ToolInputValidator` 输入 JSON Schema 校验
-- **过滤器**：`KeywordToolFilter` 按规则过滤可用工具
-- **结果治理**：`ToolResultEvictionMiddleware` 防止工具结果撑爆上下文
-- **MCP 集成**：`McpClient` 提供 HTTP/SSE、流式及 stdio 三种传输，`McpToolAdapter` 自动将 MCP 服务包装为 Agent 工具
-- **Web 能力**：网页抓取 `WebFetchTool`、联网搜索 `WebSearchTool`
-- **文件能力**：`FileToolkit` 提供文件系统读写工具
-- **审计**：`ToolExecutionStore` 记录工具调用全过程
-
-### 记忆与上下文（memory / core.memory）
-
-- **分层记忆**：短期会话记忆 `SessionMemory` + 长期记忆 `LongTermMemory`，支持沙盒隔离与跨会话召回
-- **向量检索**：`VectorLongTermMemory` 基于 Embedding 语义召回，`HashingEmbeddingModel` 可作本地无外部依赖的实现，`EmbeddingCache` 加速
-- **上下文压缩**：`CompactionMiddleware` 超阈值自动摘要，`SummaryCompactionMiddleware`
-- **遗忘策略**：`ForgettingPolicy`（按访问时间/年龄）自动清理过期记忆
-- **检查点**：`CheckpointManager` LRU 淘汰防止 OOM，支持持久化快照
-- **工具结果清理**：`ToolResultEvictionMiddleware` 维护上下文长度
-
-```
-┌──────────────────────── 记忆分层 ────────────────────────┐
-│  AgentRuntime                                            │
-│   ┌──────────────┐         ┌──────────────────────┐      │
-│   │ SessionMemory │ 短期     │  LongTermMemory 长期  │      │
-│   │  会话内上下文  │ ──────► │   跨会话可持久化       │      │
-│   └──────────────┘         │   VectorLongTerm ↑     │      │
-│                             │   语义向量召回           │      │
-│   Compaction 压缩 · 遗忘策略  │   Embedding 生成        │      │
-│   Checkpoint LRU  · 结果清理 └──────────────────────┘      │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### RAG 检索增强（rag）
-
-基于知识库的检索增强生成，让 Agent 依据真实业务资料作答，减少幻觉。
-
-- **检索器体系**：`Retriever` 接口定义统一检索契约，`InMemoryRetriever` 提供内存实现；`RetrieverRegistry` 按名称管理多个检索源（有界容量 `MAX_RETRIEVERS=64`，超限拒绝注册）
-- **检索注入**：`RagRetrievalMiddleware` 在推理前检索 Top-K 相关片段并注入系统消息；检索片段经 `GuardrailFence` 加围栏标记为**不可信数据**，有效防御**间接提示注入**
-- **文档解析**：`DocumentParser`/`TextDocumentParser` 支持文本文档解析与切片，`RetrievedChunk` 封装片段内容与来源
-- **检索工具化**：`RetrieverTool` 将检索能力暴露为 Agent 工具，让 LLM 自主按需发起检索
-- **失败兜底**：检索失败或为空时静默透传，不影响主流程
-
-```
-用户提问 ┄┄► RagRetrievalMiddleware
-              │  从 RetrieverRegistry 选取检索源
-              ▼
-         Retriever.retrieve(query, topK)
-              │  返回 RetrievedChunk 集合
-              ▼  经 GuardrailFence 围栏标记不可信
-         注入 system 消息 ──► 模型生成有据作答
-```
-
-### 多代理与编排（orchestration / subagent / planmode）
-
-泱穹内置**六大编排策略**（`OrchestrationStrategy`），覆盖单 Agent 到复杂多 Agent 协作的全场景，统一由 `AutoOrchestrationEngine` 调度：
-
-- **顺序执行（SEQUENTIAL）**：子代理按序执行，前一个的输出作为后一个的输入，适用于强依赖的任务流水线
-- **并行执行（PARALLEL）**：子代理同时执行，结果统一汇总，最大化吞吐
-- **自适应（ADAPTIVE）**：由 LLM 依据任务特征自动选择策略（含辩论/反思/群聊），未注入 LLM 时按子代理数量启发式决策
-- **辩论（DEBATE）**：多子代理独立作答，`DebateJudge` 裁判综合各方立场并给出反馈，多轮迭代收敛出最终结论
-- **反思（REFLECTION）**：执行者作答 → 评审者批判 → 执行者据批判修订，多轮迭代自我改进
-- **群聊（GROUP\_CHAT）**：多子代理经 `MsgHub` 消息中枢**轮转发言**，每个代理看到前序发言后继续讨论，联合求解
-
-配套编排原语：
-
-- **子代理委派**：`SubagentsMiddleware` + `AgentSpawnTool` 动态派生子代理，`SubagentToolRegistrar` 自动暴露其工具
-- **消息中枢（MsgHub）**：广播式消息路由 + 轮询讨论，支持参与者注册/注销、防复读防代演约束、历史上限淘汰（`MAX_HISTORY`）
-- **多代理交接**：`HandoffTool` 实现子代理间上下文交接（`HandoffContextFilter`），支持多轮协作与角色切换
-- **自动编排**：`AutoOrchestrationEngine` 自动拆解任务、生成子代理规格 `SubagentSpecGenerator`、聚合结果 `SubagentResultAggregator`
-- **用户澄清**：`AskUserTool` 在信息不足时主动向用户提问，`AutoOrchestrateTool` 触发自动编排
-- **计划模式**：`PlanModeManager` 让 LLM 先规划后执行，`PlanModeMiddleware` 注入
-
-```
-主协调 Agent
-  │  spawn_subagent / handoff / auto_orchestrate
-  ├──► 顺序/并行 子代理流水线
-  ├──► 辩论模式：A/B/C 各自作答 → DebateJudge 裁判多轮收敛
-  ├──► 反思模式：执行者 ↔ 评审者 迭代修订
-  └──► 群聊模式：MsgHub 消息中枢轮转发言，联合讨论
-                    结果汇聚 → 统一返回
-```
-
-### 智能体范式（paradigms 扩展）
-
-`yangqiong-agent-paradigms` 扩展在 ReAct 基座之外提供 **5 大经典范式引擎 + Router 元层路由**，所有范式继承 core 的 `AbstractAgentLoop` 模板，共享统一的生命周期基础设施：
-
-| 范式引擎                | 决策结构            | 评估信号          | 适用场景            |
-| ------------------- | --------------- | ------------- | --------------- |
-| `ReActEngine`（基座）   | 推理→行动→观察循环      | 工具观察结果        | 通用任务执行          |
-| `PlanExecuteEngine` | 先规划完整计划再逐步执行    | 计划完成度         | 目标明确、可预先分解的复杂任务 |
-| `ReWooEngine`       | 一次性规划按依赖执行后统一推理 | 计划间变量依赖       | 减少模型调用轮次、降低延迟成本 |
-| `ReflexionEngine`   | 自评估失败后携带教训重试    | 失败反思（Lessons） | 容错重试、从失败中学习     |
-| `SelfAskEngine`     | 复合问题拆解逐个作答      | 子问题答案链        | 多跳问答、显式问题分解     |
-| `SelfRefineEngine`  | 生成→批评→修订循环      | 自评反馈          | 对输出质量有高要求的打磨场景  |
-
-范式公共配置 `ParadigmOptions`：`maxSteps`（最大步数，默认 10）、`maxReflections`（最大反思次数，默认 2）、`maxRefinements`（最大修订次数，默认 2）。
-
-- **元层路由**：`RouterEngine` 先按工具可用性启发式预筛（无工具排除 ReAct/Plan-Execute/ReWoo），再经一次轻量模型分类轮选定最佳范式转发执行；路由决策以 `ENGINE_ROUTED` 事件承载，便于下游观测与断言；分类不可解析时回退兜底（有工具 ReAct / 无工具 Self-Ask）；`forcedParadigm` 可强制指定范式跳过分类轮
-- **统一运行语义**：所有范式引擎复用父类模板的审批挂起/账本恢复（`resume`）、人工澄清（`resumeWithClarification`）、迭代超时包装、Token/成本预算、检查点持久化能力
-- **子代理挂载范式**：`SubagentDeclaration` 新增 `agentLoop` 字段，子代理可声明挂载任意范式引擎执行专项任务（如让代码生成子代理使用 ReWoo 降低调用成本）
-
-### 安全与合规（permission / guardrail）
-
-- **权限引擎**：`PermissionEngine` + `ToolPolicyGate` 按工具维度进行审批门禁
-- **权限分级**：`AgentPermissionMode` 提供五种模式，覆盖只读到放开操作的全谱系管控：
-  - `EXPLORE` 只读（禁止写/破坏性工具）· `ACCEPT_EDITS` 允许非破坏修改
-  - `ASK` 破坏性操作需确认 · `DONT_ASK`/`BYPASS` 逐级放宽
-  - 危险操作触发 `RequireUserConfirmEvent` 请求用户确认
-- **内容审核**：`ContentModerationMiddleware` 对模型输出做内容合规审核（`ModerationVerdict`）
-- **输入/输出护栏**：`InputGuardrailMiddleware`、`OutputGuardrailMiddleware` 通过自定义规则约束交互
-- **提示注入检测**：`InjectionDetector` 识别指令注入风险；`GuardrailFence` 为外部数据加围栏，防御间接注入
-- **审计日志**：`AuditSink` 记录工具调用与审批全过程（有界缓冲，防内存泄漏）
-
-### 可靠性与持久化（durable / engine）
-
-- **运行存储**：`AgentRunStore`（内存/可替换为 JDBC）持久化运行记录
-- **检查点**：`CheckpointStore` 断点续跑能力
-- **审批存储**：`ApprovalStore` 审批记录持久化
-- **运行锁**：`RunLockStore` 分布式互斥，支持跨节点一致调度
-- **状态机**：`DurableExecutionTracker` 精确追踪运行状态，`ApprovalCoordinator` 协调审批流
-- **持久化执行**：跨进程重启后可恢复执行状态
-
-### 可观测与评测（trace / eval / ratelimit / config）
-
-- **链路追踪**：`AgentTracingMiddleware` + `TraceEmitter`/`TraceSpan` 记录调用链路与工具时序
-- **成本预算**：`CostBudgetPolicy`、`TokenBudgetPolicy` 设定费用/Token 阈值，超限自动中断
-- **评测体系**：`EvalRunner` 批量运行评测用例，`LLMEvalJudge`/`RuleEvalJudge` 双模式裁决，输出 `EvalReport` 评分报告
-- **流式事件**：文本增量/思考增量/工具调用增量/结果 等事件流，便于前端实时渲染
-
-### 技能（Skill）管理
-
-技能是预定义的提示词 + 工具集合，用于增强 Agent 特定领域能力，形成可复用的能力包。
-
-- **技能箱**：`AgentSkillBox` 聚合多个 `AgentSkill`，`SkillManager` 提供按名称索引查询与摘要生成
-- **提示注入**：`SkillPromptInjector` 按"层级广告（Level-1 Advertise）"机制注入技能摘要，`SkillManager.buildSummaries()` 优先取 YAML `description`、无则自动提取首句，控制 token 开销
-- **按需加载**：`LoadSkillTool` 让 LLM 动态加载技能进上下文，`ReadSkillResourceTool` 读取技能内部资源
-
-### 序列化（serialization）
-
-- **对象映射**：`HarnessObjectMapper` 统一消息/内容块/检查点序列化，支持跨存储持久化
-- **检查点序列化**：`AgentCheckpointSerializer` 将运行时检查点/消息快照序列化，配合断点续跑使用
-- **安全往返**：`SerializationRoundTripTest` 验证消息与内容的往返一致性，保障可恢复性
-
-### 中断控制与结构化输出（config / interruption）
-
-- **中断控制**：`AgentRuntime.interrupt(context)` 主动终止运行，底层 `AgentInterruptControl` 支持运行时安全终止
-- **上下文缓存**：`ContextCachingConfig` 复用上下文窗口
-- **结构化输出**：`AgentResponseFormat` + `StructuredOutputValidator` 强制 JSON Schema 输出，失败自动重试
-- **工具选择**：`AgentToolChoice` 精细化控制模型可用的工具集
+| 领域                  | 关键能力                                                                     | 详细文档                                                |
+| ------------------- | ------------------------------------------------------------------------ | --------------------------------------------------- |
+| 模型接入（model）         | 多厂商协议适配（OpenAI/Anthropic/DashScope/Gemini/Ollama/HTTP）、健康路由、降级重试、语义缓存、限流、成本计量 | [模型接入](./USAGE.md#3-模型接入)                           |
+| 工具执行（tool/mcp/web）  | 统一执行器与 JSON Schema 校验、MCP 三种传输、联网搜索/网页抓取、文件沙箱、调用审计                        | [定义工具](./USAGE.md#5-定义工具agenttool)                  |
+| 记忆与上下文（memory）      | 会话+长期分层记忆、向量语义召回、超限自动压缩、遗忘策略                                              | [记忆与上下文压缩](./USAGE.md#7-记忆与上下文压缩)                   |
+| RAG 检索增强（rag）       | 检索器体系、Top-K 注入、围栏防间接提示注入、检索工具化                                            | [RAG 检索增强](./USAGE.md#10-rag-检索增强)                  |
+| 多代理与编排              | 六大编排策略（顺序/并行/自适应/辩论/反思/群聊）、MsgHub 消息中枢、Handoff 交接、动态派生与结果聚合                | [子代理与编排](./USAGE.md#12-子代理与多-agent-编排)、[群聊与辩论](./USAGE.md#13-群聊与辩论) |
+| 智能体范式（paradigms）    | ReAct 基座 + 5 大范式引擎 + Router 自动路由，统一审批挂起/账本恢复/人工澄清语义                       | [智能体范式](./USAGE.md#18-智能体范式paradigms-扩展)            |
+| 安全与合规               | 权限五模式分级、内容审核、输入/输出护栏、注入检测、审计日志                                            | [权限控制](./USAGE.md#8-权限控制)、[安全护栏](./USAGE.md#9-安全护栏) |
+| 可靠性与持久化             | 运行存储、检查点断点续跑、审批存储、分布式运行锁                                                  | [持久化与断点续跑](./USAGE.md#15-持久化与断点续跑)                  |
+| 可观测与评测              | 链路追踪 Span、成本/Token 预算、规则+LLM 双裁判评测、稳定性跑批                                  | [评测](./USAGE.md#16-评测evalrunner)                    |
+| 计划模式与技能             | 先规划后执行、技能箱层级广告注入、按需加载                                                     | [计划模式](./USAGE.md#11-计划模式)                          |
+| 结构化输出与中断            | JSON Schema 强制输出+失败自动重试、运行时主动中断                                           | [结构化输出](./USAGE.md#14-结构化输出)                        |
 
 ***
 
-## 模块一览
+## 扩展模块一览
 
-泱穹智能体框架采用 **Maven 多模块聚合工程**，核心零 Spring、适配与扩展独立交付：
+基于泱穹智能体框架核心的扩展性性工程：
 
 | 模块                  | artifactId                                   | 定位                | 说明                                                                                          |
 | ------------------- | -------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
@@ -321,7 +160,7 @@
 <dependency>
     <groupId>com.yangqiong.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -392,76 +231,25 @@ toolkit.addTool(new MyTool());
 AgentRuntime runtime = builder.toolkit(toolkit).build();
 ```
 
-### 5. 自定义中间件
+### 5. 进阶能力（中间件 / 子代理 / 范式）
+
+- **自定义中间件**：实现 `AgentMiddleware` 拦截系统提示词与推理链路（[中间件](./USAGE.md#6-中间件middleware)）
+- **子代理与权限**：`subagentDeclarations` 声明子代理、`permissionContextState` 配置五级权限模式（[权限控制](./USAGE.md#8-权限控制)、[子代理与编排](./USAGE.md#12-子代理与多-agent-编排)）
+- **挂载范式引擎**：一行切换执行范式，详见 [智能体范式](./USAGE.md#18-智能体范式paradigms-扩展)
 
 ```java
-AgentMiddleware middleware = new AgentMiddleware() {
-    @Override
-    public String onSystemPrompt(String prompt, AgentRuntimeContext ctx) {
-        return prompt + "\n请用中文回答。";
-    }
-
-    @Override
-    public Flux<AgentEvent> onReasoning(AgentRuntimeContext ctx,
-                                         List<AgentMessage> messages,
-                                         Function<List<AgentMessage>, Flux<AgentEvent>> next) {
-        // 在推理前拦截
-        return next.apply(messages);
-    }
-};
-```
-
-内置中间件：
-
-| 中间件                            | 功能                |
-| ------------------------------ | ----------------- |
-| `CompactionMiddleware`         | 历史消息压缩，超出阈值时自动摘要  |
-| `ToolResultEvictionMiddleware` | 工具结果清理，防止上下文超长    |
-| `PlanModeMiddleware`           | 计划模式，让 LLM 先规划再执行 |
-| `SubagentsMiddleware`          | 子代理委派执行           |
-| `SkillPromptInjector`          | 技能提示词注入           |
-| `AgentTracingMiddleware`       | 调用链路追踪            |
-| `OutputGuardrailMiddleware`    | 输出护栏              |
-
-### 6. 子代理与权限（示例）
-
-```java
-// 声明子代理
-AgentRuntime runtime = new HarnessRuntimeBuilder()
-    .subagentDeclarations(List.of(SubagentDeclaration.builder()
-        .name("coder")
-        .description("代码生成代理")
-        .modelCode(modelCode)
-        .systemPrompt(systemPrompt)
-        .tools(toolNames)
-        .build()))
-    .enableSubagents()
-    .build();
-
-// 权限控制：只读模式，禁止写操作
-AgentRuntime readonlyRuntime = new HarnessRuntimeBuilder()
-    .permissionContextState(AgentPermissionContextState.builder()
-        .mode(AgentPermissionMode.EXPLORE)
-        .build())
-    .build();
-```
-
-### 7. 挂载智能体范式（paradigms 扩展）
-
-```java
-// 引入 yangqiong-agent-paradigms 后，通过 agentLoop 挂载范式引擎
-AgentRuntime runtime = new HarnessRuntimeBuilder()
+AgentRuntime planner = new HarnessRuntimeBuilder()
     .name("planner")
     .model(model)
-    .agentLoop(new ReWooEngine())              // 或 PlanExecute/Reflexion/SelfAsk/SelfRefine/Router
+    .agentLoop(new ReWooEngine())      // 或 PlanExecute/Reflexion/SelfAsk/SelfRefine
     .build();
 
 // 不确定任务类型时，交给 RouterEngine 自动路由择优
-AgentRuntime runtime = new HarnessRuntimeBuilder()
+AgentRuntime router = new HarnessRuntimeBuilder()
     .name("router")
     .model(model)
     .toolkit(toolkit)
-    .agentLoop(new RouterEngine())             // 路由决策以 ENGINE_ROUTED 事件输出
+    .agentLoop(new RouterEngine())     // 路由决策以 ENGINE_ROUTED 事件输出
     .build();
 ```
 
@@ -489,5 +277,5 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 - **官网**（架构详解、扩展指南、可运行示例）：<https://www.yangqiongtech.com>
 - **问题反馈**：[反馈指南](https://www.yangqiongtech.com/feedback.html)；安全漏洞请勿公开披露，邮件至 1781618435@qq.com（标题注明【安全漏洞】）
 - **技术交流 QQ 群**：1107572553（用于交流）
-- **Gitee 镜像**：<https://gitee.com/yangqiongtech/yangqiong-agent-harness>
-
+- **GitHub 地址**：<https://github.com/yangqiongtech/yangqiong-agent-harness>
+- **Gitee 地址**：<https://gitee.com/yangqiongtech/yangqiong-agent-harness>
