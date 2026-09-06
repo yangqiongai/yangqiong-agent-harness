@@ -6,7 +6,7 @@ English | [中文](./README.md)
 
 # Yangqiong Agent Harness
 
-> **Yangqiong Agent Harness** is an **enterprise-grade AI Agent runtime framework** built in **pure Java (JDK 17)**: **ReAct loop + 6 paradigm engines with auto-routing, sub-agent and multi-agent orchestration, checkpoint-based durable execution, permission & safety guardrails, full-link observability and evaluation** — **zero Spring dependency**, driven by reactive event streams (Project Reactor).
+> **Yangqiong Agent Harness** is an **out-of-the-box enterprise-grade AI Agent runtime framework** built in **pure Java (JDK 17)**: **ReAct loop + 6 paradigm engines with auto-routing, sub-agent and multi-agent orchestration, checkpoint-based durable execution, permission & safety guardrails, full-link observability and evaluation** — **zero Spring dependency**, driven by reactive event streams (Project Reactor).
 >
 > From model integration, tool execution and memory management to multi-agent orchestration, evaluation and production governance, it provides a one-stop runtime foundation for building **stable, controllable, observable and extensible** agent applications in large enterprises.
 
@@ -56,6 +56,7 @@ For the past two years Python dominated agent development and Java developers ha
 | Multi-Agent Orchestration | ✅ **6-strategy orchestration** | ❌ | ❌ | ⚠️ Supervisor spawn + A2A delegation |
 | Dynamic Sub-agents | ✅ **Fully configurable builder + runtime spawn** | ❌ | ⚠️ | ✅ Markdown declaration + runtime spawn |
 | Reliable Tool Execution | ✅ **Validation + timeout + retry** | ⚠️ | ⚠️ | ⚠️ Async tools |
+| Progressive Tool Loading | ✅ **On-demand activation** | ❌ | ❌ | ❌ |
 | Plan Mode | ✅ **Plan-then-execute, readable plan state** | ❌ | ❌ | ❌ |
 | Structured-Output Reliability | ✅ **3-tier (native JSON / fallback / validation-retry)** | ⚠️ Basic field mapping | ⚠️ Basic type mapping | ⚠️ |
 | Cost & Traffic Governance | ✅ **Budget / token metering / semantic cache / rate limit** | ⚠️ Micrometer metrics | ⚠️ Token estimation | ❌ |
@@ -98,7 +99,7 @@ Yangqiong Agent Harness is designed against these gaps — **complementary, not 
 | --- | --- |
 | Core runtime | ReAct reasoning loop, reactive streaming output, event-driven, multi-turn context management |
 | Model layer | Multi-vendor integration (OpenAI/Anthropic/DashScope/Ollama/Gemini/HTTP), unified protocol adapters, routing/fallback/retry/cache/rate-limit/cost tracking |
-| Tools | Unified executor, input validation, tool filters, tool-result eviction |
+| Tools | Unified executor, input validation, tool filters, tool-result eviction, progressive tool loading (on-demand activation) |
 | Memory | Session memory, long-term memory, semantic vector retrieval, LRU checkpoints, forgetting policies, context compaction |
 | Multi-agent | Sub-agent delegation (mountable with any paradigm engine), 6 orchestration strategies (sequential/parallel/adaptive/debate/reflection/group chat), handoff, message hub, result aggregation |
 | Paradigms | ReAct base + Plan-Execute, ReWoo, Reflexion, Self-Ask, Self-Refine engines + Router meta-layer auto-routing, unified approval pause / ledger resume / clarification semantics |
@@ -120,7 +121,7 @@ Yangqiong Agent Harness is designed against these gaps — **complementary, not 
 | Domain | Key capabilities | Docs |
 | --- | --- | --- |
 | Models | Multi-vendor protocol adapters (OpenAI/Anthropic/DashScope/Gemini/Ollama/HTTP), health routing, fallback/retry, semantic caching, rate limiting, cost metering | [Model integration](./USAGE.md#3-模型接入) |
-| Tools (tool/mcp/web) | Unified executor + JSON Schema validation, MCP transports, web search/fetch, sandboxed file tools, invocation audit | [Defining tools](./USAGE.md#5-定义工具agenttool) |
+| Tools (tool/mcp/web) | Unified executor + JSON Schema validation, progressive tool loading (on-demand activation), MCP transports, web search/fetch, sandboxed file tools, invocation audit | [Defining tools](./USAGE.md#5-定义工具agenttool) |
 | Memory | Session + long-term layered memory, vector recall, auto compaction, forgetting policies | [Memory & compaction](./USAGE.md#7-记忆与上下文压缩) |
 | RAG | Retriever system, Top-K injection, fence against indirect prompt injection, retrieval as a tool | [RAG](./USAGE.md#10-rag-检索增强) |
 | Multi-agent | 6 orchestration strategies (sequential/parallel/adaptive/debate/reflection/group chat), MsgHub, handoff, dynamic spawn & aggregation | [Sub-agents & orchestration](./USAGE.md#12-子代理与多-agent-编排), [Group chat & debate](./USAGE.md#13-群聊与辩论) |
@@ -128,7 +129,7 @@ Yangqiong Agent Harness is designed against these gaps — **complementary, not 
 | Safety & compliance | 5-mode permission tiers, content moderation, input/output guardrails, injection detection, audit logging | [Permissions](./USAGE.md#8-权限控制), [Guardrails](./USAGE.md#9-安全护栏) |
 | Reliability & durability | Run stores, checkpoint resume, approval stores, distributed run locks | [Durability](./USAGE.md#15-持久化与断点续跑) |
 | Observability & eval | Tracing spans, cost/token budgets, rule + LLM dual-judge evaluation, stability runs | [Evaluation](./USAGE.md#16-评测evalrunner) |
-| Plan mode & skills | Plan-then-execute, level-advertised skill injection, on-demand loading | [Plan mode](./USAGE.md#11-计划模式) |
+| Plan mode & skills | Plan-then-execute, level-advertised skill injection, progressive skill/tool loading (on-demand loading) | [Plan mode](./USAGE.md#11-计划模式) |
 | Structured output & interruption | Forced JSON Schema output with auto-retry, runtime interruption | [Structured output](./USAGE.md#14-结构化输出) |
 
 > Note: the linked manual sections are in Chinese; use your browser's translate feature if needed.

@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -163,19 +164,60 @@ public class TraceMiddleware implements AgentMiddleware {
         String spanId = newTraceId();
         String parentSpanId = pushSpan(context, spanId);
         long startNanos = System.nanoTime();
+        AtomicReference<Throwable> errorRef = new AtomicReference<>();
         Flux<AgentEvent> flux = body.get();
         if (onEvent != null) {
             flux = flux.doOnNext(onEvent);
         }
+        flux = flux.doOnError(errorRef::set);
         return flux.doFinally(signalType -> {
             popSpan(context, spanId);
+            long endMillis = System.currentTimeMillis();
             long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
+            Throwable error = errorRef.get();
+            String status = error != null ? "ERROR" : "OK";
+            String errorMessage = error != null && error.getMessage() != null
+                    ? truncate(error.getMessage(), 1024) : null;
+            enrichAttributes(context, attributes);
             try {
-                emitter.onSpan(new SpanInfo(traceId, spanId, parentSpanId, operation, durationMs, attributes));
+                emitter.onSpan(new SpanInfo(traceId, spanId, parentSpanId, operation, durationMs, attributes,
+                        status, errorMessage, endMillis - durationMs));
             } catch (Exception e) {
                 log.warn("[TraceMiddleware] 导出Span异常: {}", e.getMessage());
             }
         });
+    }
+
+    /**
+     * 冗余上下文字段注入Span属性（taskId/agentCode来自attributes，sessionId/userId/scopeId来自上下文）
+     * @param context
+     * @param attributes
+     */
+    private void enrichAttributes(AgentRuntimeContext context, Map<String, Object> attributes) {
+        if (context == null) {
+            return;
+        }
+        attributes.putIfAbsent("sessionId", context.getSessionId());
+        attributes.putIfAbsent("userId", context.getUserId());
+        attributes.putIfAbsent("scopeId", context.getScopeId());
+        Object taskId = context.get("taskId");
+        if (taskId != null) {
+            attributes.putIfAbsent("taskId", taskId);
+        }
+        Object agentCode = context.get("agentCode");
+        if (agentCode != null) {
+            attributes.putIfAbsent("agentCode", agentCode);
+        }
+    }
+
+    /**
+     * 截断文本
+     * @param text
+     * @param maxLength
+     * @return
+     */
+    private static String truncate(String text, int maxLength) {
+        return text.length() <= maxLength ? text : text.substring(0, maxLength);
     }
 
     /**

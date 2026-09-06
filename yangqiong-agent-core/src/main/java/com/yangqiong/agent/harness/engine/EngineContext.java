@@ -33,6 +33,7 @@ import com.yangqiong.agent.harness.planmode.PlanModeMiddleware;
 import com.yangqiong.agent.harness.tool.HarnessToolkit;
 import com.yangqiong.agent.harness.tool.ToolExecutor;
 import com.yangqiong.agent.harness.tool.ToolFilter;
+import com.yangqiong.agent.harness.tool.ToolLoadingState;
 import com.yangqiong.agent.harness.tool.ToolSchemaBuilder;
 import com.yangqiong.agent.harness.core.HarnessAgentRuntimeBuilder;
 import com.yangqiong.agent.harness.core.message.AgentChatUsage;
@@ -222,6 +223,11 @@ public class EngineContext {
      */
     private volatile DurableExecutionTracker durableTracker;
 
+    /**
+     * 工具渐进加载状态（可空，为空时全量下发schema；非空且progressive时按常驻/已转正裁剪）
+     */
+    private volatile ToolLoadingState toolLoadingState;
+
     public EngineContext(String agentName, String systemPrompt, AgentRuntimeContext runtimeContext,
                          HarnessToolkit toolkit, int maxIters, AgentGenerateOptions generateOptions) {
         this(agentName, systemPrompt, runtimeContext, toolkit, maxIters, generateOptions,
@@ -356,7 +362,16 @@ public class EngineContext {
     public List<Map<String, Object>> getAllToolSchemas(String userQuery) {
         List<Map<String, Object>> schemas = new ArrayList<>();
         if (staticToolkit != null) {
-            schemas.addAll(staticToolkit.getToolSchemas());
+            if (toolLoadingState == null || !toolLoadingState.isProgressive()) {
+                schemas.addAll(staticToolkit.getToolSchemas());
+            } else {
+                // 渐进模式：静态工具箱仅保留常驻、已转正与元工具的schema
+                for (Map.Entry<String, Map<String, Object>> e : staticToolkit.getToolSchemasMap().entrySet()) {
+                    if (toolLoadingState.isSchemaVisible(e.getKey())) {
+                        schemas.add(e.getValue());
+                    }
+                }
+            }
         }
         schemas.addAll(ToolSchemaBuilder.buildAll(dynamicTools));
         List<AgentTool> planTools = getPlanModeTools();
@@ -366,6 +381,41 @@ public class EngineContext {
             schemas = toolFilter.filter(schemas, userQuery);
         }
         return schemas;
+    }
+
+    /**
+     * 按需启用工具（PROGRESSIVE模式，转正后下一轮schema生效）
+     * @param toolName 工具名
+     * @return 转正的工具，未找到时返回null
+     */
+    public AgentTool activateTool(String toolName) {
+        if (toolName == null || staticToolkit == null) {
+            return null;
+        }
+        AgentTool tool = staticToolkit.find(toolName);
+        if (tool == null) {
+            return null;
+        }
+        if (toolLoadingState != null) {
+            toolLoadingState.activate(toolName);
+        }
+        return tool;
+    }
+
+    /**
+     * 注入工具渐进加载状态
+     * @param toolLoadingState
+     */
+    public void setToolLoadingState(ToolLoadingState toolLoadingState) {
+        this.toolLoadingState = toolLoadingState;
+    }
+
+    /**
+     * 获取工具渐进加载状态
+     * @return
+     */
+    public ToolLoadingState getToolLoadingState() {
+        return toolLoadingState;
     }
 
     /**

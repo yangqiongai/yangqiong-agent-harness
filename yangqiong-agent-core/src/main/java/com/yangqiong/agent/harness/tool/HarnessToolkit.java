@@ -20,6 +20,7 @@ import com.yangqiong.agent.harness.core.tool.AgentToolkit;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -102,5 +103,16 @@ public class HarnessToolkit implements AgentToolkit {
      */
     public List<Map<String, Object>> getToolSchemas() {
         return Collections.unmodifiableList(new ArrayList<>(toolSchemas.values()));
+    }
+
+    /**
+     * 获取工具名到Schema的映射视图
+     * <p>
+     * 返回不可变副本，供渐进加载模式按工具名裁剪schema。
+     * </p>
+     * @return
+     */
+    public Map<String, Map<String, Object>> getToolSchemasMap() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(toolSchemas));
     }
 }

@@ -28,6 +28,7 @@ import com.yangqiong.agent.harness.permission.PermissionEngine;
 import com.yangqiong.agent.harness.tool.HarnessToolkit;
 import com.yangqiong.agent.harness.tool.ToolExecutor;
 import com.yangqiong.agent.harness.tool.ToolFilter;
+import com.yangqiong.agent.harness.tool.ToolLoadingState;
 import com.yangqiong.agent.harness.core.HarnessAgentRuntimeBuilder;
 import com.yangqiong.agent.harness.core.model.AgentGenerateOptions;
 
@@ -181,6 +182,11 @@ public class EngineConfig {
      * 持久执行状态跟踪器（可选，构建时注入，为空时运行不落RunRecord）
      */
     private DurableExecutionTracker durableTracker;
+
+    /**
+     * 工具渐进加载状态（可选，PROGRESSIVE模式构建时创建，EngineContext与LoadToolTool共享）
+     */
+    private ToolLoadingState toolLoadingState;
 
     public EngineConfig(String agentName, String systemPrompt, int maxIters, HarnessToolkit toolkit,
                         AgentGenerateOptions generateOptions, int maxConcurrentToolCalls) {
@@ -567,6 +573,24 @@ public class EngineConfig {
     }
 
     /**
+     * 获取工具渐进加载状态
+     * @return
+     */
+    public ToolLoadingState getToolLoadingState() {
+        return toolLoadingState;
+    }
+
+    /**
+     * 注入工具渐进加载状态
+     * @param toolLoadingState
+     * @return
+     */
+    public EngineConfig toolLoadingState(ToolLoadingState toolLoadingState) {
+        this.toolLoadingState = toolLoadingState;
+        return this;
+    }
+
+    /**
      * 基于运行时上下文构建引擎上下文，注入Agent名称、系统提示词与生成选项
      * @param runtimeContext
      * @return
@@ -589,6 +613,7 @@ public class EngineConfig {
         ctx.setModelPricingRegistry(modelPricingRegistry);
         ctx.setModelCode(modelCode);
         ctx.setDurableTracker(durableTracker);
+        ctx.setToolLoadingState(toolLoadingState);
         return ctx;
     }
 }

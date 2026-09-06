@@ -59,6 +59,21 @@ public final class SpanInfo {
     private final Map<String, Object> attributes;
 
     /**
+     * 状态(OK/ERROR)
+     */
+    private final String status;
+
+    /**
+     * 错误信息，无错误为null
+     */
+    private final String errorMessage;
+
+    /**
+     * 开始时间（epoch毫秒，0表示未知）
+     */
+    private final long startTimeMs;
+
+    /**
      * 全参构造
      * @param traceId
      * @param spanId
@@ -69,12 +84,58 @@ public final class SpanInfo {
      */
     public SpanInfo(String traceId, String spanId, String parentSpanId, String operation,
                     long durationMs, Map<String, Object> attributes) {
+        this(traceId, spanId, parentSpanId, operation, durationMs, attributes,
+                "OK", null, System.currentTimeMillis() - durationMs);
+    }
+
+    /**
+     * 带状态全参构造
+     * @param traceId
+     * @param spanId
+     * @param parentSpanId
+     * @param operation
+     * @param durationMs
+     * @param attributes
+     * @param status
+     * @param errorMessage
+     * @param startTimeMs
+     */
+    public SpanInfo(String traceId, String spanId, String parentSpanId, String operation,
+                    long durationMs, Map<String, Object> attributes, String status,
+                    String errorMessage, long startTimeMs) {
         this.traceId = traceId;
         this.spanId = spanId;
         this.parentSpanId = parentSpanId;
         this.operation = operation;
         this.durationMs = durationMs;
         this.attributes = attributes != null ? new LinkedHashMap<>(attributes) : new LinkedHashMap<>();
+        this.status = status != null ? status : "OK";
+        this.errorMessage = errorMessage;
+        this.startTimeMs = startTimeMs;
+    }
+
+    /**
+     * 获取状态
+     * @return
+     */
+    public String getStatus() {
+        return status;
+    }
+
+    /**
+     * 获取错误信息
+     * @return
+     */
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    /**
+     * 获取开始时间（epoch毫秒）
+     * @return
+     */
+    public long getStartTimeMs() {
+        return startTimeMs;
     }
 
     /**

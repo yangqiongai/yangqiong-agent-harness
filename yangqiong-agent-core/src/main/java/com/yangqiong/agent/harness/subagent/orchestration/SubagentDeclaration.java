@@ -44,10 +44,10 @@ public class SubagentDeclaration {
     private String description;
 
     /**
-     * Agent类型编码，默认使用default处理器
+     * Agent编码，默认使用default处理器
      */
     @Builder.Default
-    private String agentTypeCode = "default";
+    private String agentCode = "default";
 
     /**
      * 执行范式循环，非空时替换子代理默认

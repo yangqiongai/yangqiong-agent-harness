@@ -30,6 +30,7 @@ import com.yangqiong.agent.harness.config.AgentToolResultEvictionConfig;
 import com.yangqiong.agent.harness.config.CostBudgetPolicy;
 import com.yangqiong.agent.harness.config.ContextCachingConfig;
 import com.yangqiong.agent.harness.config.TokenBudgetPolicy;
+import com.yangqiong.agent.harness.config.ToolLoadingMode;
 import com.yangqiong.agent.harness.core.middleware.AgentMiddleware;
 import com.yangqiong.agent.harness.core.memory.AgentLongTermMemory;
 import com.yangqiong.agent.harness.core.memory.SessionMemory;
@@ -115,8 +116,11 @@ import com.yangqiong.agent.harness.spi.HarnessDiscovery;
 import com.yangqiong.agent.harness.tool.HarnessToolkit;
 import com.yangqiong.agent.harness.tool.InMemoryToolExecutionStore;
 import com.yangqiong.agent.harness.tool.KeywordToolFilter;
+import com.yangqiong.agent.harness.tool.LoadToolTool;
+import com.yangqiong.agent.harness.tool.ToolCatalogPromptInjector;
 import com.yangqiong.agent.harness.tool.ToolExecutionStore;
 import com.yangqiong.agent.harness.tool.ToolExecutor;
+import com.yangqiong.agent.harness.tool.ToolLoadingState;
 import com.yangqiong.agent.harness.tool.FileToolkit;
 import com.yangqiong.agent.harness.core.trace.TraceEmitter;
 import com.yangqiong.agent.harness.event.EventBus;
@@ -127,6 +131,7 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -270,6 +275,16 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
      * 技能箱
      */
     private AgentSkillBox skillBox;
+
+    /**
+     * 工具下发模式，默认FULL全量下发
+     */
+    private ToolLoadingMode toolLoadingMode = ToolLoadingMode.FULL;
+
+    /**
+     * 渐进模式下常驻工具名单（始终下发完整schema）
+     */
+    private Set<String> alwaysOnTools;
 
     /**
      * 单次Agent执行总超时
@@ -1272,6 +1287,44 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
         return this;
     }
 
+    /**
+     * 设置工具下发模式
+     * @param mode FULL全量下发（默认）；PROGRESSIVE渐进加载（常驻工具+目录注入+按需启用）
+     * @return
+     */
+    public HarnessRuntimeBuilder toolLoadingMode(ToolLoadingMode mode) {
+        if (mode != null) {
+            this.toolLoadingMode = mode;
+        }
+        return this;
+    }
+
+    /**
+     * 设置渐进模式下常驻工具名单（始终下发完整schema）
+     * @param toolNames 工具名集合，空集表示全部工具进延迟池
+     * @return
+     */
+    public HarnessRuntimeBuilder alwaysOnTools(Set<String> toolNames) {
+        this.alwaysOnTools = toolNames;
+        return this;
+    }
+
+    /**
+     * 获取工具下发模式
+     * @return
+     */
+    public ToolLoadingMode getToolLoadingMode() {
+        return toolLoadingMode;
+    }
+
+    /**
+     * 获取渐进模式常驻工具名单
+     * @return
+     */
+    public Set<String> getAlwaysOnTools() {
+        return alwaysOnTools;
+    }
+
     @Override
     public HarnessRuntimeBuilder responseFormat(AgentResponseFormat format) {
         this.responseFormat = format;
@@ -2092,6 +2145,21 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
             }
         }
 
+        // 工具渐进加载：目录注入 + load_tool元工具，仅PROGRESSIVE模式装配
+        ToolLoadingState progressiveState = null;
+        if (toolLoadingMode == ToolLoadingMode.PROGRESSIVE && harnessToolkit != null) {
+            progressiveState = new ToolLoadingState(true, alwaysOnTools);
+            Set<String> catalogExcludes = new HashSet<>(progressiveState.getAlwaysOnTools());
+            if (deniedTools != null) {
+                catalogExcludes.addAll(deniedTools);
+            }
+            catalogExcludes.addAll(ToolLoadingState.META_TOOL_NAMES);
+            allMiddlewares.add(new ToolCatalogPromptInjector(harnessToolkit, catalogExcludes));
+            harnessToolkit.addTool(new LoadToolTool(harnessToolkit, progressiveState));
+            log.info("工具渐进加载已启用: 常驻工具{}个, 延迟池{}个", progressiveState.getAlwaysOnTools().size(),
+                    harnessToolkit.getTools().size() - progressiveState.getAlwaysOnTools().size());
+        }
+
         MiddlewareChain middlewareChain = new MiddlewareChain(allMiddlewares);
 
         // 统一审批模式适配：按四种模式调整权限引擎与策略门装配
@@ -2138,6 +2206,9 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
                 maxContextTokens, historyTruncationStrategy,
                 toolCallTimeout, maxToolResultChars, maxConsecutiveToolFailures);
         config.setTimeoutMode(timeoutMode);
+        if (progressiveState != null) {
+            config.toolLoadingState(progressiveState);
+        }
 
         // 默认装配工具筛选器，减少无关工具Schema注入
         config.setToolFilter(new KeywordToolFilter());

@@ -49,12 +49,12 @@ public class HelloWorldExample {
     /**
      * 默认模型名称
      */
-    private static final String DEFAULT_MODEL = "claude-sonnet-5";
+    private static final String DEFAULT_MODEL = "deepseek-v4-flash";
 
     /**
      * 默认API基础地址
      */
-    private static final String DEFAULT_BASE_URL = "https://ooioo.work";
+    private static final String DEFAULT_BASE_URL = "https://api.deepseek.com";
 
     private HelloWorldExample() {
     }
