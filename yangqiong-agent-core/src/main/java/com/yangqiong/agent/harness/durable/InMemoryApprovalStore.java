@@ -84,15 +84,17 @@ public class InMemoryApprovalStore implements ApprovalStore {
 
     @Override
     public ApprovalRecord resolve(String approvalId, boolean approved, String reason) {
-        ApprovalRecord record = byApprovalId.get(approvalId);
-        if (record == null) {
+        // compute内完成状态判断与迁移，保证并发落定时仅首个决策生效（幂等）
+        ApprovalRecord resolved = byApprovalId.compute(approvalId, (id, record) -> {
+            if (record == null) {
+                return null;
+            }
+            return record.getState() == ApprovalRecord.ApprovalState.PENDING
+                    ? record.resolve(approved, reason) : record;
+        });
+        if (resolved == null) {
             throw new IllegalStateException("审批记录不存在: " + approvalId);
         }
-        if (record.getState() != ApprovalRecord.ApprovalState.PENDING) {
-            return record;
-        }
-        ApprovalRecord resolved = record.resolve(approved, reason);
-        byApprovalId.put(approvalId, resolved);
         if (resolved.getToolCallId() != null) {
             byToolCallId.put(resolved.getToolCallId(), resolved);
         }

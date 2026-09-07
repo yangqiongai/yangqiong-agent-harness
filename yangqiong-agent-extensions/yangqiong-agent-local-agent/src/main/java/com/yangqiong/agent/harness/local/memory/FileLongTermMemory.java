@@ -21,13 +21,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -40,7 +39,8 @@ import com.yangqiong.agent.harness.durable.serialization.HarnessObjectMapper;
  * <p>
  * 以工作区 memory/ 目录为落点：每个记忆条目为一个 {memoryId}.jsonl 文件，
  * 单行存储 {id, scope, user, session, content, metadata, ts}；
- * 检索采用分词包含匹配打分排序，删除带所有权校验，scope 不匹配抛出 SecurityException。
+ * 检索采用分词包含匹配打分排序，内存缓存以文件名+修改时间+大小指纹做失效检测，
+ * 外部增删改文件后自动重载；删除带所有权校验，scope 不匹配抛出 SecurityException。
  * </p>
  * @author yangqiong
  */
@@ -98,9 +98,9 @@ public class FileLongTermMemory implements AgentLongTermMemory {
     private boolean cacheLoaded = false;
 
     /**
-     * 缓存建立时的文件名集合，用于检测外部增删文件触发重载
+     * 缓存建立时各记忆文件指纹（文件名 - [最后修改时间毫秒, 文件大小]），用于检测外部修改与增删触发重载
      */
-    private Set<String> knownFileNames = new HashSet<>();
+    private Map<String, long[]> knownFingerprints = new LinkedHashMap<>();
 
     /**
      * 构造
@@ -149,11 +149,14 @@ public class FileLongTermMemory implements AgentLongTermMemory {
             record.put(KEY_CONTENT, content);
             record.put("metadata", metadata);
             record.put(KEY_TS, System.currentTimeMillis());
-            writeRecord(memoryId, record);
+            Path file = writeRecord(memoryId, record);
             if (cacheLoaded) {
                 cache.put(memoryId, record);
             }
-            knownFileNames.add(memoryId + FILE_SUFFIX);
+            long[] fingerprint = fingerprintOf(file);
+            if (fingerprint != null) {
+                knownFingerprints.put(memoryId + FILE_SUFFIX, fingerprint);
+            }
         }
     }
 
@@ -212,34 +215,65 @@ public class FileLongTermMemory implements AgentLongTermMemory {
     }
 
     /**
-     * 确保内存缓存与磁盘对齐，外部增删文件后自动重载
+     * 确保内存缓存与磁盘对齐，外部增删或修改文件后自动重载
      */
     private void ensureCacheLoaded() {
         if (!Files.isDirectory(root)) {
             cacheLoaded = false;
             cache.clear();
-            knownFileNames.clear();
+            knownFingerprints.clear();
             return;
         }
-        List<Path> files = listMemoryFiles();
-        Set<String> currentNames = new HashSet<>();
-        for (Path file : files) {
-            currentNames.add(file.getFileName().toString());
-        }
-        if (cacheLoaded && currentNames.equals(knownFileNames)) {
+        Map<String, long[]> current = readFileFingerprints();
+        if (cacheLoaded && current.equals(knownFingerprints)) {
             return;
         }
         cache.clear();
-        knownFileNames = currentNames;
-        for (Path file : files) {
-            String name = file.getFileName().toString();
+        knownFingerprints = current;
+        for (String name : current.keySet()) {
             String id = name.substring(0, name.length() - FILE_SUFFIX.length());
-            Map<String, Object> record = readRecord(file);
+            Map<String, Object> record = readRecord(root.resolve(name));
             if (record != null) {
                 cache.put(id, record);
             }
         }
         cacheLoaded = true;
+    }
+
+    /**
+     * 扫描记忆目录并采集各jsonl文件的修改时间与大小指纹
+     * @return
+     */
+    private Map<String, long[]> readFileFingerprints() {
+        try (var stream = Files.list(root)) {
+            Map<String, long[]> fingerprints = new LinkedHashMap<>();
+            stream.filter(Files::isRegularFile)
+                    .filter(file -> file.getFileName().toString().endsWith(FILE_SUFFIX))
+                    .sorted()
+                    .forEach(file -> {
+                        long[] fingerprint = fingerprintOf(file);
+                        if (fingerprint != null) {
+                            fingerprints.put(file.getFileName().toString(), fingerprint);
+                        }
+                    });
+            return fingerprints;
+        } catch (IOException e) {
+            throw new UncheckedIOException("记忆目录扫描失败: " + root, e);
+        }
+    }
+
+    /**
+     * 读取文件最后修改时间与大小作为变更指纹，文件不可读时返回null
+     * @param file
+     * @return
+     */
+    private long[] fingerprintOf(Path file) {
+        try {
+            BasicFileAttributes attributes = Files.readAttributes(file, BasicFileAttributes.class);
+            return new long[] {attributes.lastModifiedTime().toMillis(), attributes.size()};
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     /**
@@ -299,21 +333,23 @@ public class FileLongTermMemory implements AgentLongTermMemory {
     private void removeFromCache(Path file) {
         String name = file.getFileName().toString();
         cache.remove(name.substring(0, name.length() - FILE_SUFFIX.length()));
-        knownFileNames.remove(name);
+        knownFingerprints.remove(name);
     }
 
     /**
      * 写入单条记忆记录到 {memoryId}.jsonl
      * @param memoryId
      * @param record
+     * @return
      */
-    private void writeRecord(String memoryId, Map<String, Object> record) {
+    private Path writeRecord(String memoryId, Map<String, Object> record) {
         try {
             Files.createDirectories(root);
             Path file = root.resolve(memoryId + FILE_SUFFIX);
             String line = MAPPER.writeValueAsString(record);
             Files.write(file, (line + "\n").getBytes(StandardCharsets.UTF_8),
                     StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            return file;
         } catch (IOException e) {
             throw new UncheckedIOException("记忆条目写入失败: memoryId=" + memoryId, e);
         }
@@ -333,20 +369,6 @@ public class FileLongTermMemory implements AgentLongTermMemory {
             return MAPPER.readValue(line, RECORD_TYPE);
         } catch (IOException e) {
             throw new UncheckedIOException("记忆条目读取失败: " + file, e);
-        }
-    }
-
-    /**
-     * 列出记忆目录下全部 jsonl 文件
-     * @return
-     */
-    private List<Path> listMemoryFiles() {
-        try (var stream = Files.list(root)) {
-            return stream.filter(Files::isRegularFile).filter(file -> file.getFileName()
-                            .toString().endsWith(FILE_SUFFIX))
-                    .sorted().toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException("记忆目录扫描失败: " + root, e);
         }
     }
 

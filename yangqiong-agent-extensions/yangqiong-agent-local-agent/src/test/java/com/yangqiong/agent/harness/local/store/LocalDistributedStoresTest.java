@@ -228,6 +228,74 @@ class LocalDistributedStoresTest {
     }
 
     @Test
+    void shouldElectSingleWinnerUnderConcurrentLockContention() throws Exception {
+        try (LocalDistributedStores stores = LocalDistributedStores.create(tempDir)) {
+            RunLockStore lockStore = stores.runLockStore();
+            int contenders = 16;
+            java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(contenders);
+            java.util.concurrent.atomic.AtomicInteger winners = new java.util.concurrent.atomic.AtomicInteger();
+            for (int i = 0; i < contenders; i++) {
+                String ownerNode = "node-" + i;
+                new Thread(() -> {
+                    try {
+                        start.await();
+                        if (lockStore.tryLock("run-race", ownerNode, Duration.ofSeconds(60))) {
+                            winners.incrementAndGet();
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        done.countDown();
+                    }
+                }).start();
+            }
+            start.countDown();
+            assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
+
+            // 多进程并发抢同一runId：仅允许一个节点成功，其余全部失败
+            assertThat(winners.get()).isEqualTo(1);
+            assertThat(lockStore.owner("run-race")).isPresent();
+        }
+    }
+
+    @Test
+    void shouldElectSingleWinnerOnExpiredTakeoverRace() throws Exception {
+        try (LocalDistributedStores stores = LocalDistributedStores.create(tempDir)) {
+            RunLockStore lockStore = stores.runLockStore();
+            assertThat(lockStore.tryLock("run-expired-race", "node-crashed", Duration.ofMillis(50)))
+                    .isTrue();
+            awaitOwnerExpired(lockStore, "run-expired-race");
+
+            int contenders = 16;
+            java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(contenders);
+            java.util.concurrent.atomic.AtomicInteger winners = new java.util.concurrent.atomic.AtomicInteger();
+            for (int i = 0; i < contenders; i++) {
+                String ownerNode = "node-" + i;
+                new Thread(() -> {
+                    try {
+                        start.await();
+                        if (lockStore.tryLock("run-expired-race", ownerNode, Duration.ofSeconds(60))) {
+                            winners.incrementAndGet();
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        done.countDown();
+                    }
+                }).start();
+            }
+            start.countDown();
+            assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
+
+            // 崩溃节点租约过期后多节点同时接管：仅一个节点赢得锁
+            assertThat(winners.get()).isEqualTo(1);
+            assertThat(lockStore.owner("run-expired-race")).isPresent();
+        }
+    }
+
+    @Test
     void shouldSupportConcurrentCheckpointWritesWithoutDeadlockOrLoss() throws Exception {
         try (LocalDistributedStores stores = LocalDistributedStores.create(tempDir)) {
             CheckpointStore checkpointStore = stores.checkpointStore();

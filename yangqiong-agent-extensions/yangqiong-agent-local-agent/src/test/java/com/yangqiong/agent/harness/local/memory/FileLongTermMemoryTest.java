@@ -104,6 +104,23 @@ class FileLongTermMemoryTest {
         assertThat(memory.search("scope-a", "user-1", "外部新增", 5)).containsExactly("外部新增记忆");
     }
 
+    @Test
+    void shouldReloadCacheWhenExternalFileModified() throws Exception {
+        Path memoryDir = tempDir.resolve("memory");
+        FileLongTermMemory memory = new FileLongTermMemory(memoryDir);
+        memory.store("scope-a", "user-1", "s1", "原始记忆内容", null);
+        assertThat(memory.search("scope-a", "user-1", "原始", 5)).containsExactly("原始记忆内容");
+
+        // 外部原地改写同名文件（不同长度保证size指纹变化）后应检索到新内容
+        Thread.sleep(10);
+        Path file = Files.list(memoryDir).filter(Files::isRegularFile).findFirst().orElseThrow();
+        Files.writeString(file,
+                "{\"id\":\"external-fix\",\"scope\":\"scope-a\",\"user\":\"user-1\",\"session\":\"s1\","
+                        + "\"content\":\"外部改写后的记忆\",\"ts\":2}\n");
+        assertThat(memory.search("scope-a", "user-1", "外部改写", 5)).containsExactly("外部改写后的记忆");
+        assertThat(memory.search("scope-a", "user-1", "原始", 5)).isEmpty();
+    }
+
     /**
      * 读取目录下记忆文件的id字段作为记忆ID（此处仅一个条目，取唯一文件）
      * @param memory

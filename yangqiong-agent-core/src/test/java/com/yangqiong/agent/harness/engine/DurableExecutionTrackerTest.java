@@ -125,6 +125,70 @@ class DurableExecutionTrackerTest {
     }
 
     @Test
+    void shouldResolveConcurrentApprovalExactlyOnce() throws Exception {
+        InMemoryApprovalStore approvalStore = new InMemoryApprovalStore();
+        DurableExecutionTracker tracker =
+                new DurableExecutionTracker(null, null, approvalStore);
+        approvalStore.create(ApprovalRecord.pending("appr-race", "run-1", "call-race",
+                "send_email", "scope-1", "user-1"));
+
+        int workers = 16;
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(workers);
+        for (int i = 0; i < workers; i++) {
+            boolean approved = i % 2 == 0;
+            new Thread(() -> {
+                try {
+                    start.await();
+                    tracker.resolveApproval(null, "call-race", approved, approved ? "同意" : "拒绝");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            }).start();
+        }
+        start.countDown();
+        assertThat(done.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+        // 并发落定后状态必须唯一且为终态，不允许互相覆盖或残留待审批
+        ApprovalRecord record = approvalStore.findByToolCallId("call-race").orElseThrow();
+        assertThat(record.getState())
+                .isIn(ApprovalRecord.ApprovalState.APPROVED, ApprovalRecord.ApprovalState.DENIED);
+        assertThat(approvalStore.findPending("scope-1")).isEmpty();
+    }
+
+    @Test
+    void shouldResumeFromWaitingApprovalConcurrentlyWithoutRegression() throws Exception {
+        InMemoryAgentRunStore runStore = new InMemoryAgentRunStore();
+        DurableExecutionTracker tracker = new DurableExecutionTracker(runStore, null, null);
+        AgentRuntimeContext context = newContext();
+        String runId = tracker.ensureRunning(context, "testAgent");
+        runStore.findByRunId(runId).get().transitionTo(AgentRunState.WAITING_APPROVAL, "await");
+
+        // 多节点并发续跑同一运行：状态迁移幂等，不允许回退或分裂
+        int workers = 8;
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(workers);
+        for (int i = 0; i < workers; i++) {
+            new Thread(() -> {
+                try {
+                    start.await();
+                    tracker.ensureRunning(context, "testAgent");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            }).start();
+        }
+        start.countDown();
+        assertThat(done.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+        assertThat(runStore.findByRunId(runId).get().getState()).isEqualTo(AgentRunState.RUNNING);
+    }
+
+    @Test
     void shouldRecordCompletedToolCallIds() {
         DurableExecutionTracker tracker = new DurableExecutionTracker(null, null, null);
         AgentRuntimeContext context = newContext();
