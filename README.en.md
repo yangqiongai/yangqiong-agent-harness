@@ -108,7 +108,6 @@ Benchmarked item by item against the de-facto Python standards of 2026 (LangGrap
 | Observability | ✅ OTel + Micrometer + dual-judge evaluation | LangSmith leads on UX; OTel ecosystem aligns | Par |
 | Progressive tool loading | ✅ **On-demand activation** | Not built into any mainstream framework in 2026 | Unique |
 
-> The only gap is **ecosystem breadth** (LangGraph's 750+ community integrations vs 12 extension modules here) — a community-size gap, not a design gap; core enterprise integration needs are covered by MCP. Optional enhancements (A2A protocol, more vector store adapters, checkpoint time-travel debugging) already have designs: [A2A protocol](./docs/design/a2a-protocol.md) · [vector store adapters](./docs/design/vector-store-adapters.md) · [time-travel debugging](./docs/design/checkpoint-time-travel.md).
 
 ***
 

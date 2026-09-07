@@ -108,7 +108,6 @@
 | 可观测 | ✅ OTel + Micrometer + 双裁判评测 | LangSmith 体验最优，OTel 生态可对齐 | 持平 |
 | 工具渐进加载 | ✅ **按需启用** | 2026 年主流框架均未内置 | 独有 |
 
-> 唯一差距在**生态广度**（LangGraph 750+ 社区集成 vs 本框架 12 个扩展模块），属社区规模差距而非设计差距，企业核心接入需求已由 MCP 覆盖。可选增强项（A2A 协议、更多向量库适配、检查点时间旅行调试）已有落地设计：[A2A 协议](./docs/design/a2a-protocol.md) · [向量库适配](./docs/design/vector-store-adapters.md) · [时间旅行调试](./docs/design/checkpoint-time-travel.md)。
 
 ***
 
