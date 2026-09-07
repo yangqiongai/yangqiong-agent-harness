@@ -91,6 +91,25 @@
 
 > 简单说：Spring AI 与 LangChain4j 解决了"Java 能不能接 LLM"，泱穹智能体框架负责解决"接了之后能否稳定可控地跑进企业生产系统"。
 
+### 4. 对标主流 Python 智能体框架：核心能力全面看齐
+
+以 2026 年 Python 生态事实标准为基准（LangGraph 为持久化执行标杆、CrewAI 为角色编排代表、OpenAI Agents SDK 为轻量官方参考）逐项对标，泱穹智能体框架在智能体运行时核心维度**全面看齐、多项占优**：
+
+| 能力域 | 泱穹 Agent Harness | 主流 Python 框架（LangGraph / CrewAI / OpenAI SDK） | 结论 |
+| --- | --- | --- | --- |
+| 持久化执行 | ✅ **四存储四实现**（RunStore/CheckpointStore/RunLockStore/ApprovalStore × InMemory/SQLite/JDBC/Redis） | LangGraph 有 checkpoint（唯一内置）；CrewAI、OpenAI SDK 无内置 | 持平 LangGraph，额外具备跨节点运行锁 |
+| 人工在环 | ✅ **审批挂起+账本恢复、ask_user 澄清续接，闭环** | LangGraph 一等公民；OpenAI SDK 仅会话记忆 | 持平偏优（恢复闭环更完整） |
+| 多代理编排 | ✅ **六策略编排（顺序/并行/自适应/辩论/反思/群聊）+ Handoff + 消息中枢 + 动态子代理** | CrewAI 角色/层级（无 checkpoint）；OpenAI SDK 仅 handoff；AutoGen 已进维护期 | 占优 |
+| 范式引擎 | ✅ **ReAct + Plan-Execute/ReWoo/Reflexion/Self-Ask/Self-Refine + Router 自动路由** | Python 侧无框架内置多范式，需自行组装 | 占优（差异化） |
+| 生产治理 | ✅ **预算/Token 计量/语义缓存/限流/降级/路由** | 均无内置，依赖 LangSmith 等外部平台 | 占优 |
+| 安全 | ✅ **权限引擎+护栏+注入检测+沙箱+Shell 词法审批+审计** | 仅 OpenAI SDK 有基础 guardrails | 占优 |
+| 结构化输出 | ✅ **三层保障（原生 JSON/降级/校验重试）** | 基础支持 | 持平偏优 |
+| MCP | ✅ 多传输+自定义组装 | 主流均已支持 | 持平 |
+| 可观测 | ✅ OTel + Micrometer + 双裁判评测 | LangSmith 体验最优，OTel 生态可对齐 | 持平 |
+| 工具渐进加载 | ✅ **按需启用** | 2026 年主流框架均未内置 | 独有 |
+
+> 唯一差距在**生态广度**（LangGraph 750+ 社区集成 vs 本框架 12 个扩展模块），属社区规模差距而非设计差距，企业核心接入需求已由 MCP 覆盖。可选增强项（A2A 协议、更多向量库适配、检查点时间旅行调试）已有落地设计：[A2A 协议](./docs/design/a2a-protocol.md) · [向量库适配](./docs/design/vector-store-adapters.md) · [时间旅行调试](./docs/design/checkpoint-time-travel.md)。
+
 ***
 
 ## 核心特性

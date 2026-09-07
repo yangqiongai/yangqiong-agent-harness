@@ -91,6 +91,25 @@ Yangqiong Agent Harness is designed against these gaps — **complementary, not 
 
 > In short: Spring AI and LangChain4j answer "can Java call an LLM"; Yangqiong Agent Harness answers "can it run **stably and controllably into enterprise production**".
 
+### 4. Benchmarking against mainstream Python agent frameworks: full parity at the core
+
+Benchmarked item by item against the de-facto Python standards of 2026 (LangGraph as the durable-execution benchmark, CrewAI as the role-based orchestration representative, OpenAI Agents SDK as the lightweight official reference), Yangqiong Agent Harness reaches **full parity at the core agent-runtime dimensions and holds an edge in several**:
+
+| Capability | Yangqiong Agent Harness | Mainstream Python frameworks (LangGraph / CrewAI / OpenAI SDK) | Verdict |
+| --- | --- | --- | --- |
+| Durable execution | ✅ **4 stores × 4 implementations** (RunStore/CheckpointStore/RunLockStore/ApprovalStore × InMemory/SQLite/JDBC/Redis) | Only LangGraph has built-in checkpointing; CrewAI & OpenAI SDK have none | Par with LangGraph, plus cross-node run lock |
+| Human-in-the-loop | ✅ **Approval pause + ledger resume, ask_user clarification resume — closed loop** | First-class in LangGraph; OpenAI SDK has session memory only | Par or slightly ahead (more complete resume loop) |
+| Multi-agent orchestration | ✅ **6 strategies (sequential/parallel/adaptive/debate/reflection/group chat) + handoff + message hub + dynamic sub-agents** | CrewAI role/hierarchy (no checkpoint); OpenAI SDK handoff only; AutoGen in maintenance | Advantage |
+| Paradigm engine | ✅ **ReAct + Plan-Execute/ReWoo/Reflexion/Self-Ask/Self-Refine + auto-routing Router** | No Python framework ships a built-in multi-paradigm engine | Advantage (differentiating) |
+| Production governance | ✅ **Budget / token metering / semantic cache / rate limiting / fallback / routing** | Not built in; relies on external platforms like LangSmith | Advantage |
+| Security | ✅ **Permission engine + guardrails + injection detection + sandbox + shell lexing approval + audit** | Only basic guardrails in OpenAI SDK | Advantage |
+| Structured output | ✅ **3-tier guarantee (native JSON / fallback / validation retry)** | Basic support | Par or slightly ahead |
+| MCP | ✅ Multi-transport + custom assembly | Widely supported | Par |
+| Observability | ✅ OTel + Micrometer + dual-judge evaluation | LangSmith leads on UX; OTel ecosystem aligns | Par |
+| Progressive tool loading | ✅ **On-demand activation** | Not built into any mainstream framework in 2026 | Unique |
+
+> The only gap is **ecosystem breadth** (LangGraph's 750+ community integrations vs 12 extension modules here) — a community-size gap, not a design gap; core enterprise integration needs are covered by MCP. Optional enhancements (A2A protocol, more vector store adapters, checkpoint time-travel debugging) already have designs: [A2A protocol](./docs/design/a2a-protocol.md) · [vector store adapters](./docs/design/vector-store-adapters.md) · [time-travel debugging](./docs/design/checkpoint-time-travel.md).
+
 ***
 
 ## Core Features
