@@ -310,8 +310,8 @@ AgentRuntime router = new HarnessRuntimeBuilder()
 
 ## 社区与反馈
 
-- **官网**（架构详解、扩展指南、可运行示例）：<https://www.yangqiongai.com>
-- **问题反馈**：[反馈指南](https://www.yangqiongai.com/feedback.html)；安全漏洞请勿公开披露，邮件至 1781618435@qq.com（标题注明【安全漏洞】）
+- **官网**（架构详解、扩展指南、可运行示例）：<https://yangqiongai.com>
+- **问题反馈**：[反馈指南](https://yangqiongai.com/feedback.html)；安全漏洞请勿公开披露，邮件至 1781618435@qq.com（标题注明【安全漏洞】）
 - **技术交流 QQ 群**：1107572553（用于交流）
 - **GitHub 地址**：<https://github.com/yangqiongai/yangqiong-agent-harness>
 - **Gitee 地址**：<https://gitee.com/yangqiongai/yangqiong-agent-harness>

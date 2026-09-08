@@ -25,7 +25,6 @@
         <dependency>
             <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-store-vector</artifactId>
-            <version>${project.version}</version>
             <type>test-jar</type>
             <classifier>tests</classifier>
             <scope>test</scope>
