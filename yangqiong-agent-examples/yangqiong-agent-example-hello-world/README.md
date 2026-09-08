@@ -15,7 +15,7 @@ set OPENAI_API_KEY=sk-xxx
 
 # 运行
 mvn -pl yangqiong-agent-examples/yangqiong-agent-example-hello-world exec:java \
-  -Dexec.mainClass=helloworld.example.com.yangqiong.agent.harness.HelloWorldExample
+  -Dexec.mainClass=helloworld.example.com.yangqiongai.agent.harness.HelloWorldExample
 ```
 
 ## 关键代码位置

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.yangqiongai.agent</groupId>
+        <artifactId>yangqiong-agent-extensions</artifactId>
+        <version>1.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>yangqiong-agent-store-vector-pgvector</artifactId>
+    <packaging>jar</packaging>
+
+    <name>yangqiong-agent-store-vector-pgvector</name>
+    <description>泱穹智能体框架向量存储 pgvector 适配器，纯 JDBC 实现，编译零驱动依赖</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.yangqiongai.agent</groupId>
+            <artifactId>yangqiong-agent-store-vector</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.yangqiongai.agent</groupId>
+            <artifactId>yangqiong-agent-store-vector</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <classifier>tests</classifier>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

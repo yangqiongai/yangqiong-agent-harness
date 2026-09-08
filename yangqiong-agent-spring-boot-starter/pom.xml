@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.yangqiong.agent</groupId>
+        <groupId>com.yangqiongai.agent</groupId>
         <artifactId>yangqiong-agent-harness</artifactId>
         <version>1.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -37,12 +37,12 @@
     <dependencies>
         <!-- 核心引擎（零 Spring） -->
         <dependency>
-            <groupId>com.yangqiong.agent</groupId>
+            <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-core</artifactId>
         </dependency>
         <!-- 内置模型提供者（OpenAI/Anthropic/DashScope/Gemini/Ollama） -->
         <dependency>
-            <groupId>com.yangqiong.agent</groupId>
+            <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-model-providers</artifactId>
         </dependency>
         <!-- Spring Boot 自动装配与配置绑定 -->

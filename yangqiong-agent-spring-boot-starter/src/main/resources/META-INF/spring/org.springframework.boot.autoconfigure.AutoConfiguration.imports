@@ -1,4 +1,4 @@
-com.yangqiong.agent.harness.starter.autoconfigure.AgentModelAutoConfiguration
-com.yangqiong.agent.harness.starter.autoconfigure.AgentStoreAutoConfiguration
-com.yangqiong.agent.harness.starter.autoconfigure.AgentTracingAutoConfiguration
-com.yangqiong.agent.harness.starter.autoconfigure.AgentRuntimeAutoConfiguration
+com.yangqiongai.agent.harness.starter.autoconfigure.AgentModelAutoConfiguration
+com.yangqiongai.agent.harness.starter.autoconfigure.AgentStoreAutoConfiguration
+com.yangqiongai.agent.harness.starter.autoconfigure.AgentTracingAutoConfiguration
+com.yangqiongai.agent.harness.starter.autoconfigure.AgentRuntimeAutoConfiguration

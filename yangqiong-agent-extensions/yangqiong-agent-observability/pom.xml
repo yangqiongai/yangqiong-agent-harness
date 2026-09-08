@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.yangqiong.agent</groupId>
+        <groupId>com.yangqiongai.agent</groupId>
         <artifactId>yangqiong-agent-extensions</artifactId>
         <version>1.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -35,7 +35,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.yangqiong.agent</groupId>
+            <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-core</artifactId>
         </dependency>
         <dependency>

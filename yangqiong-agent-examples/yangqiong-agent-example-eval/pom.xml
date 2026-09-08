@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.yangqiong.agent</groupId>
+        <groupId>com.yangqiongai.agent</groupId>
         <artifactId>yangqiong-agent-examples</artifactId>
         <version>1.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -19,15 +19,15 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.yangqiong.agent</groupId>
+            <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.yangqiong.agent</groupId>
+            <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-model-providers</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.yangqiong.agent</groupId>
+            <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-eval</artifactId>
         </dependency>
         <dependency>
@@ -38,7 +38,7 @@
 
     <build>
         <plugins>
-            <!-- 运行：mvn -pl yangqiong-agent-examples/yangqiong-agent-example-eval exec:java -Dexec.mainClass=com.yangqiong.agent.harness.example.eval.EvalExample -->
+            <!-- 运行：mvn -pl yangqiong-agent-examples/yangqiong-agent-example-eval exec:java -Dexec.mainClass=com.yangqiongai.agent.harness.example.eval.EvalExample -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

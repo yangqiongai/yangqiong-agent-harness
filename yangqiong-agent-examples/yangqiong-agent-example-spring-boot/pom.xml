@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.yangqiong.agent</groupId>
+        <groupId>com.yangqiongai.agent</groupId>
         <artifactId>yangqiong-agent-examples</artifactId>
         <version>1.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -37,7 +37,7 @@
     <dependencies>
         <!-- 泱穹 Starter：自动装配模型、运行时与共享存储 -->
         <dependency>
-            <groupId>com.yangqiong.agent</groupId>
+            <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-spring-boot-starter</artifactId>
         </dependency>
         <!-- Web 支撑 -->

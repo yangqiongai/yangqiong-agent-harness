@@ -12,7 +12,7 @@
 
 ```bash
 mvn -pl yangqiong-agent-examples/yangqiong-agent-example-multi-agent exec:java \
-  -Dexec.mainClass=com.yangqiong.agent.harness.example.multiagent.MultiAgentExample
+  -Dexec.mainClass=com.yangqiongai.agent.harness.example.multiagent.MultiAgentExample
 ```
 
 ## 真实模型示例（差旅审批助手）
@@ -35,7 +35,7 @@ mvn -pl yangqiong-agent-examples/yangqiong-agent-example-multi-agent exec:java \
 set HARNESS_TEST_API_KEY=sk-xxx
 
 mvn -pl yangqiong-agent-examples/yangqiong-agent-example-multi-agent exec:java \
-  -Dexec.mainClass=com.yangqiong.agent.harness.example.multiagent.RealModelTravelApprovalExample
+  -Dexec.mainClass=com.yangqiongai.agent.harness.example.multiagent.RealModelTravelApprovalExample
 ```
 
 未配置 `HARNESS_TEST_API_KEY` 时，示例启动会提示退出，不会静默崩溃。

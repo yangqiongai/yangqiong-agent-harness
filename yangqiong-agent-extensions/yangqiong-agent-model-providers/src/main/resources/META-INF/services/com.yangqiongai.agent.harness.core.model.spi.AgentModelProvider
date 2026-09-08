@@ -1,0 +1,4 @@
+com.yangqiongai.agent.harness.model.provider.AnthropicModelProvider
+com.yangqiongai.agent.harness.model.provider.DashScopeModelProvider
+com.yangqiongai.agent.harness.model.provider.GeminiModelProvider
+com.yangqiongai.agent.harness.model.provider.OllamaModelProvider

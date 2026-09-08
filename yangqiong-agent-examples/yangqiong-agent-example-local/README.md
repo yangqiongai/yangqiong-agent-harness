@@ -34,7 +34,7 @@ mvn -pl yangqiong-agent-examples/yangqiong-agent-example-local -am compile
 
 # 运行示例
 mvn -pl yangqiong-agent-examples/yangqiong-agent-example-local exec:java `
-  -Dexec.mainClass=com.yangqiong.agent.harness.examples.local.LocalModeExample
+  -Dexec.mainClass=com.yangqiongai.agent.harness.examples.local.LocalModeExample
 ```
 
 ### 方式一：配置 API Key（远端服务）
@@ -46,7 +46,7 @@ $env:AI_MODEL="deepseek-chat"
 $env:AI_BASE_URL="https://api.deepseek.com/v1"
 
 mvn -pl yangqiong-agent-examples/yangqiong-agent-example-local exec:java `
-  -Dexec.mainClass=com.yangqiong.agent.harness.examples.local.LocalModeExample
+  -Dexec.mainClass=com.yangqiongai.agent.harness.examples.local.LocalModeExample
 ```
 
 ### 方式二：本机推理服务

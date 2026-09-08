@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 ![JDK](https://img.shields.io/badge/JDK-17-orange.svg)
-![Gitee](https://gitee.com/yangqiongtech/yangqiong-agent-harness/badge/star.svg)
+![Gitee](https://gitee.com/yangqiongai/yangqiong-agent-harness/badge/star.svg)
 
 # 泱穹 Agent Harness（泱穹智能体框架）
 
@@ -168,7 +168,10 @@
 | 模型提供方               | `yangqiong-agent-model-providers`            | 多厂商模型接入           | Anthropic / DashScope / Gemini / Ollama 协议模型，SPI 自动发现                                       |
 | 共享存储 JDBC           | `yangqiong-agent-store-jdbc`                 | MyBatis-Plus 存储实现 | 运行记录/检查点/审批/记忆/锁 持久化到 MySQL                                                                 |
 | 共享存储 Redis          | `yangqiong-agent-store-redis`                | Jedis 存储实现        | 分布式运行治理存储（零 Spring）                                                                         |
-| 向量存储                | `yangqiong-agent-store-vector`               | 向量存储扩展            | 语义检索向量持久化                                                                                   |
+| 向量存储                | `yangqiong-agent-store-vector`               | 向量存储扩展            | 语义检索向量持久化（SPI + Lucene 默认实现）                                                                 |
+| 向量存储 pgvector        | `yangqiong-agent-store-vector-pgvector`      | pgvector 适配器      | 纯 JDBC 单表多集合 + JSONB 元数据，运行期提供 PostgreSQL 驱动                                                  |
+| 向量存储 Milvus          | `yangqiong-agent-store-vector-milvus`        | Milvus 适配器        | milvus-sdk-java 独立集群/云向量服务                                                                    |
+| 向量存储 Qdrant          | `yangqiong-agent-store-vector-qdrant`        | Qdrant 适配器        | gRPC 客户端独立集群/云向量服务                                                                            |
 | 本地模式                | `yangqiong-agent-local-agent`                | 一键装配本地智能体         | SQLite 存储 + 工作区 + Shell 工具 + 检查点续跑                                                          |
 | 服务化                 | `yangqiong-agent-server`                     | HTTP 服务承载         | 会话管理、SSE 事件流、审批恢复接口                                                                         |
 | 可观测                 | `yangqiong-agent-observability`              | 监控集成              | Micrometer / OpenTelemetry，内置 Grafana 看板                                                    |
@@ -191,7 +194,7 @@
 
 ```xml
 <dependency>
-    <groupId>com.yangqiong.agent</groupId>
+    <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -307,8 +310,8 @@ AgentRuntime router = new HarnessRuntimeBuilder()
 
 ## 社区与反馈
 
-- **官网**（架构详解、扩展指南、可运行示例）：<https://www.yangqiongtech.com>
-- **问题反馈**：[反馈指南](https://www.yangqiongtech.com/feedback.html)；安全漏洞请勿公开披露，邮件至 1781618435@qq.com（标题注明【安全漏洞】）
+- **官网**（架构详解、扩展指南、可运行示例）：<https://www.yangqiongai.com>
+- **问题反馈**：[反馈指南](https://www.yangqiongai.com/feedback.html)；安全漏洞请勿公开披露，邮件至 1781618435@qq.com（标题注明【安全漏洞】）
 - **技术交流 QQ 群**：1107572553（用于交流）
-- **GitHub 地址**：<https://github.com/yangqiongtech/yangqiong-agent-harness>
-- **Gitee 地址**：<https://gitee.com/yangqiongtech/yangqiong-agent-harness>
+- **GitHub 地址**：<https://github.com/yangqiongai/yangqiong-agent-harness>
+- **Gitee 地址**：<https://gitee.com/yangqiongai/yangqiong-agent-harness>

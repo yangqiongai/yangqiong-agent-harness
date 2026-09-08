@@ -8,7 +8,7 @@
 # 可选环境变量（默认值与 hello-world 示例一致）
 $env:AI_API_KEY="sk-xxx"; $env:AI_MODEL="claude-sonnet-5"; $env:AI_BASE_URL="https://ooioo.work"; $env:EVAL_ROUNDS="3"
 
-mvn -pl yangqiong-agent-examples/yangqiong-agent-example-eval exec:java -Dexec.mainClass=com.yangqiong.agent.harness.example.eval.EvalExample
+mvn -pl yangqiong-agent-examples/yangqiong-agent-example-eval exec:java -Dexec.mainClass=com.yangqiongai.agent.harness.example.eval.EvalExample
 ```
 
 ## 示例内容

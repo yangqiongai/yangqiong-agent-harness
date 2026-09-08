@@ -1,6 +1,6 @@
 # 泱穹 Agent Harness 基础使用手册
 
-> 本手册基于框架的实际测试用例梳理，覆盖从「引入依赖」到「复杂多 Agent 编排」的最常用功能点。所有示例均可在 `src/test/java/com/yangqiong/agent/harness/` 对应测试中找到真实用例佐证。
+> 本手册基于框架的实际测试用例梳理，覆盖从「引入依赖」到「复杂多 Agent 编排」的最常用功能点。所有示例均可在 `src/test/java/com/yangqiongai/agent/harness/` 对应测试中找到真实用例佐证。
 
 ## 目录
 
@@ -33,7 +33,7 @@
 
 ```xml
 <dependency>
-    <groupId>com.yangqiong.agent</groupId>
+    <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
@@ -46,10 +46,10 @@
 核心构建器为 `HarnessRuntimeBuilder`，通过链式调用组装运行时（参考 `HarnessAgentRuntimeTest` / `ReActLoopIntegrationTest`）。
 
 ```java
-import com.yangqiong.agent.harness.HarnessRuntimeBuilder;
-import com.yangqiong.agent.harness.core.AgentRuntime;
-import com.yangqiong.agent.harness.engine.AgentRuntimeContext;
-import com.yangqiong.agent.harness.core.message.MessageFactory;
+import com.yangqiongai.agent.harness.HarnessRuntimeBuilder;
+import com.yangqiongai.agent.harness.core.AgentRuntime;
+import com.yangqiongai.agent.harness.engine.AgentRuntimeContext;
+import com.yangqiongai.agent.harness.core.message.MessageFactory;
 
 // 构建运行时
 AgentRuntime runtime = new HarnessRuntimeBuilder()
@@ -69,16 +69,16 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 统一通过 `AgentModel` 抽象对接多厂商模型（参考 `NewFeatureRealModelTest`）。推荐使用 `HarnessModelFactory` + `AgentModelRegistry`：
 
 ```java
-import com.yangqiong.agent.harness.core.model.AgentModel;
-import com.yangqiong.agent.harness.core.model.AgentGenerateOptions;
-import com.yangqiong.agent.harness.core.model.registry.AgentModelRegistry;
-import com.yangqiong.agent.harness.model.HarnessModelFactory;
-import com.yangqiong.agent.harness.model.HarnessModelProperties;
-import com.yangqiong.agent.harness.model.provider.OpenAIModelProvider;
-import com.yangqiong.agent.harness.model.provider.AnthropicModelProvider;
-import com.yangqiong.agent.harness.model.provider.DashScopeModelProvider;
-import com.yangqiong.agent.harness.model.provider.GeminiModelProvider;
-import com.yangqiong.agent.harness.model.provider.OllamaModelProvider;
+import com.yangqiongai.agent.harness.core.model.AgentModel;
+import com.yangqiongai.agent.harness.core.model.AgentGenerateOptions;
+import com.yangqiongai.agent.harness.core.model.registry.AgentModelRegistry;
+import com.yangqiongai.agent.harness.model.HarnessModelFactory;
+import com.yangqiongai.agent.harness.model.HarnessModelProperties;
+import com.yangqiongai.agent.harness.model.provider.OpenAIModelProvider;
+import com.yangqiongai.agent.harness.model.provider.AnthropicModelProvider;
+import com.yangqiongai.agent.harness.model.provider.DashScopeModelProvider;
+import com.yangqiongai.agent.harness.model.provider.GeminiModelProvider;
+import com.yangqiongai.agent.harness.model.provider.OllamaModelProvider;
 
 AgentGenerateOptions options = AgentGenerateOptions.builder()
     .temperature(0.1)
@@ -128,10 +128,10 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 使用 `MessageFactory` 构造消息，`AgentMessageRole` 区分角色（参考 `ReActEngineTest` / `ReActLoopIntegrationTest`）：
 
 ```java
-import com.yangqiong.agent.harness.core.event.AgentEvent;
-import com.yangqiong.agent.harness.core.event.AgentEventType;
-import com.yangqiong.agent.harness.core.message.AgentMessage;
-import com.yangqiong.agent.harness.core.message.MessageFactory;
+import com.yangqiongai.agent.harness.core.event.AgentEvent;
+import com.yangqiongai.agent.harness.core.event.AgentEventType;
+import com.yangqiongai.agent.harness.core.message.AgentMessage;
+import com.yangqiongai.agent.harness.core.message.MessageFactory;
 
 AgentMessage userMsg = MessageFactory.createUserMessage("你好");
 
@@ -162,10 +162,10 @@ runtime.stream(
 实现 `AgentTool` 接口即可自定义工具（参考 `HarnessToolkitTest` 与 `TestAgentTools`）：
 
 ```java
-import com.yangqiong.agent.harness.core.tool.AgentTool;
-import com.yangqiong.agent.harness.core.tool.AgentToolCallParam;
-import com.yangqiong.agent.harness.core.message.AgentToolResultBlock;
-import com.yangqiong.agent.harness.core.message.AgentTextBlock;
+import com.yangqiongai.agent.harness.core.tool.AgentTool;
+import com.yangqiongai.agent.harness.core.tool.AgentToolCallParam;
+import com.yangqiongai.agent.harness.core.message.AgentToolResultBlock;
+import com.yangqiongai.agent.harness.core.message.AgentTextBlock;
 import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
@@ -187,7 +187,7 @@ public class MyTool implements AgentTool {
 注册工具到运行时，可使用 `HarnessToolkit`：
 
 ```java
-import com.yangqiong.agent.harness.tool.HarnessToolkit;
+import com.yangqiongai.agent.harness.tool.HarnessToolkit;
 
 HarnessToolkit toolkit = new HarnessToolkit(null);
 toolkit.addTool(new MyTool());
@@ -213,8 +213,8 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 中间件可在 ReAct 循环的**推理、行动、输出**等阶段插入逻辑（参考 `MiddlewareChainTest`）。自定义中间件：
 
 ```java
-import com.yangqiong.agent.harness.core.middleware.AgentMiddleware;
-import com.yangqiong.agent.harness.engine.AgentRuntimeContext;
+import com.yangqiongai.agent.harness.core.middleware.AgentMiddleware;
+import com.yangqiongai.agent.harness.engine.AgentRuntimeContext;
 import reactor.core.publisher.Flux;
 
 AgentMiddleware middleware = new AgentMiddleware() {
@@ -256,8 +256,8 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 配置压缩阈值，超过后自动摘要（参考 `CompactionMiddlewareTest`）：
 
 ```java
-import com.yangqiong.agent.harness.config.AgentCompactionConfig;
-import com.yangqiong.agent.harness.middleware.CompactionMiddleware;
+import com.yangqiongai.agent.harness.config.AgentCompactionConfig;
+import com.yangqiongai.agent.harness.middleware.CompactionMiddleware;
 
 AgentCompactionConfig config = AgentCompactionConfig.builder()
     .triggerMessages(5)   // 触发压缩的消息条数
@@ -274,10 +274,10 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 **长短期记忆**（参考 `HarnessRuntimeBuilderMemoryTest`、`LongTermMemoryAdapterTest`）：
 
 ```java
-import com.yangqiong.agent.harness.config.AgentMemoryConfig;
-import com.yangqiong.agent.harness.memory.VectorLongTermMemory;
-import com.yangqiong.agent.harness.memory.ForgettingPolicy;
-import com.yangqiong.agent.harness.memory.AgeForgettingPolicy;
+import com.yangqiongai.agent.harness.config.AgentMemoryConfig;
+import com.yangqiongai.agent.harness.memory.VectorLongTermMemory;
+import com.yangqiongai.agent.harness.memory.ForgettingPolicy;
+import com.yangqiongai.agent.harness.memory.AgeForgettingPolicy;
 
 // 向量长期记忆（需 embedding 模型）
 AgentMemoryConfig memoryConfig = AgentMemoryConfig.builder()...build();
@@ -299,8 +299,8 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 `AgentPermissionMode` 定义五种管控级别，`PermissionEngine` 评估工具是否放行（参考 `reactLoop_permission_toolBlocked` 用例）：
 
 ```java
-import com.yangqiong.agent.harness.config.AgentPermissionContextState;
-import com.yangqiong.agent.harness.config.AgentPermissionMode;
+import com.yangqiongai.agent.harness.config.AgentPermissionContextState;
+import com.yangqiongai.agent.harness.config.AgentPermissionMode;
 
 // 只读模式：禁止写/破坏性工具
 AgentPermissionContextState state = AgentPermissionContextState.builder()
@@ -326,8 +326,8 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 **内容审核**：
 
 ```java
-import com.yangqiong.agent.harness.guardrail.ContentModerationPolicy;
-import com.yangqiong.agent.harness.guardrail.ModerationVerdict;
+import com.yangqiongai.agent.harness.guardrail.ContentModerationPolicy;
+import com.yangqiongai.agent.harness.guardrail.ModerationVerdict;
 
 ContentModerationPolicy policy = content -> ModerationVerdict.of(true, "内容合规"); // 实现合规策略
 AgentRuntime runtime = new HarnessRuntimeBuilder()
@@ -340,7 +340,7 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 **输入/工具护栏**：
 
 ```java
-import com.yangqiong.agent.harness.guardrail.GuardrailRuleRegistry;
+import com.yangqiongai.agent.harness.guardrail.GuardrailRuleRegistry;
 
 AgentRuntime runtime = new HarnessRuntimeBuilder()
     .name("agent")
@@ -357,10 +357,10 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 通过 `RetrieverRegistry` 注册检索源，`RetrieverTool` 暴露检索能力（参考 `RagRetrievalMiddlewareTest`、`RetrieverToolTest`）：
 
 ```java
-import com.yangqiong.agent.harness.rag.Retriever;
-import com.yangqiong.agent.harness.rag.RetrieverRegistry;
-import com.yangqiong.agent.harness.rag.InMemoryRetriever;
-import com.yangqiong.agent.harness.rag.RetrievedChunk;
+import com.yangqiongai.agent.harness.rag.Retriever;
+import com.yangqiongai.agent.harness.rag.RetrieverRegistry;
+import com.yangqiongai.agent.harness.rag.InMemoryRetriever;
+import com.yangqiongai.agent.harness.rag.RetrievedChunk;
 
 // 实现检索器
 Retriever myRetriever = (query, topK, filter) -> List.of(
@@ -378,6 +378,50 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 ```
 
 > 检索片段会自动经 `GuardrailFence` 加围栏标记为**不可信数据**，防御间接提示注入。
+
+### 10.1 向量存储与外部向量库
+
+`yangqiong-agent-store-vector` 提供 `VectorIndex` SPI：Lucene 本地落盘索引为默认实现，pgvector / Milvus / Qdrant 适配器为独立 Maven 模块（不引入即零依赖），上层 `PersistentVectorMemory`（长期记忆）与 `VectorRetriever`（RAG 语义检索）依赖 SPI，切换后端零改动。
+
+```java
+import com.yangqiongai.agent.harness.store.vector.PersistentVectorStore;
+import com.yangqiongai.agent.harness.store.vector.VectorIndex;
+import com.yangqiongai.agent.harness.store.vector.VectorIndexes;
+
+// Lucene 本地落盘（零外部依赖，数据目录自动创建）
+try (PersistentVectorStore store = PersistentVectorStore.open(Path.of("data/vector"), embeddingModel)) {
+    store.memory().store("tenant-a", "user-1", "s1", "长期记忆内容", Map.of());
+    store.vectorRetriever().addDocument("doc-1", "文档块内容", Map.of("category", "guide"));
+    AgentRuntime runtime = new HarnessRuntimeBuilder()
+        .name("agent").model(model)
+        .retriever("knowledge", store.retriever())
+        .longTermMemory(store.memory())
+        .build();
+}
+
+// 外部向量服务：按配置经 ServiceLoader 装配（harness.vector.store=pgvector/milvus/qdrant）
+VectorIndex index = VectorIndexes.create("pgvector", Map.of(
+    "jdbcUrl", "jdbc:postgresql://localhost:5432/agent",
+    "user", "postgres", "password", "postgres",
+    "table", "harness_vector", "metric", "cosine"));
+try (PersistentVectorStore store = PersistentVectorStore.open(index, embeddingModel)) {
+    // 用法与 Lucene 完全一致
+}
+```
+
+适配器与配置要点：
+
+| 存储 | artifactId | 运行期依赖 | 关键配置键（`VectorIndexes.create` 第二参） |
+| --- | --- | --- | --- |
+| Lucene（默认） | `yangqiong-agent-store-vector` | 无 | `dataDir`（落盘目录）；相似度固定 cosine |
+| pgvector | `yangqiong-agent-store-vector-pgvector` | PostgreSQL 驱动（类路径） | `jdbcUrl` / `user` / `password` / `table`（缺省 `harness_vector`）/ `metric`（cosine/dot/l2） |
+| Milvus | `yangqiong-agent-store-vector-milvus` | milvus-sdk-java | `uri` / `token` / `metric` |
+| Qdrant | `yangqiong-agent-store-vector-qdrant` | io.qdrant:client（gRPC） | `uri` / `apiKey` / `metric` |
+
+- SPI 集合即隔离单元：Lucene 为 scope 复合桶字段、pgvector 为表内 `collection` 列（单表多集合，维度建表时固定）、Milvus/Qdrant 为真实 collection（按需懒创建）
+- 元数据过滤统一为 `MetadataFilter`（等值/IN/范围，AND 组合），独立后端以内存兜底求值，口径与 Lucene 一致
+- 各后端均无 XA 语义，向量写入失败以重试补偿；pgvector 支持传入 `DataSource` 复用外部连接池（不参与业务事务）
+- 契约测试基类 `VectorIndexContractTest`（store-vector test-jar）覆盖全部后端一致行为，适配器契约测试经环境变量注入连接信息（`HARNESS_PGVECTOR_JDBC_URL` / `HARNESS_MILVUS_URI` / `HARNESS_QDRANT_URI`），未配置自动跳过
 
 ---
 
@@ -402,8 +446,8 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 **声明式子代理**（参考 `SubagentsMiddlewareTest`、`AgentSpawnToolTest`）：
 
 ```java
-import com.yangqiong.agent.harness.subagent.orchestration.SubagentDeclaration;
-import com.yangqiong.agent.harness.engine.ReActEngine; // 子代理用相同引擎
+import com.yangqiongai.agent.harness.subagent.orchestration.SubagentDeclaration;
+import com.yangqiongai.agent.harness.engine.ReActEngine; // 子代理用相同引擎
 
 SubagentDeclaration coder = SubagentDeclaration.builder()
     .name("coder")
@@ -424,7 +468,7 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 **自动编排策略**（参考 `AutoOrchestrationEngineTest`、`AutoOrchestrateToolTest`）：
 
 ```java
-import com.yangqiong.agent.harness.subagent.orchestration.OrchestrationStrategy;
+import com.yangqiongai.agent.harness.subagent.orchestration.OrchestrationStrategy;
 
 AgentRuntime runtime = new HarnessRuntimeBuilder()
     .name("coordinator")
@@ -477,8 +521,8 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 **群聊 / 消息中枢（MsgHub）**（参考 `MsgHubTest`）：多 Agent 经消息中枢**轮转发言**，每个代理看到前序发言后继续讨论。
 
 ```java
-import com.yangqiong.agent.harness.subagent.orchestration.MsgHub;
-import com.yangqiong.agent.harness.engine.AgentRuntimeContext;
+import com.yangqiongai.agent.harness.subagent.orchestration.MsgHub;
+import com.yangqiongai.agent.harness.engine.AgentRuntimeContext;
 
 MsgHub hub = new MsgHub();
 hub.register(agentA);
@@ -503,8 +547,8 @@ List<AgentMessage> discussion = hub.roundRobin("如何提升转化率", AgentRun
 强制模型按 JSON Schema 输出，失败自动重试（参考 `ReActEngineStructuredOutputRetryTest`、`StructuredOutputValidatorTest`）：
 
 ```java
-import com.yangqiong.agent.harness.config.AgentResponseFormat;
-import com.yangqiong.agent.harness.config.AgentJsonSchema;
+import com.yangqiongai.agent.harness.config.AgentResponseFormat;
+import com.yangqiongai.agent.harness.config.AgentJsonSchema;
 
 AgentResponseFormat format = AgentResponseFormat.builder()
     .strictJson(true)
@@ -528,10 +572,10 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 框架内置内存版持久化存储，可替换为 JDBC 等实现（参考 `InMemoryDurableStoreBoundTest`、`InMemoryRunLockStoreTest`、`DistributedCrossNodeTest`）：
 
 ```java
-import com.yangqiong.agent.harness.durable.InMemoryAgentRunStore;
-import com.yangqiong.agent.harness.durable.InMemoryCheckpointStore;
-import com.yangqiong.agent.harness.durable.InMemoryApprovalStore;
-import com.yangqiong.agent.harness.durable.InMemoryRunLockStore;
+import com.yangqiongai.agent.harness.durable.InMemoryAgentRunStore;
+import com.yangqiongai.agent.harness.durable.InMemoryCheckpointStore;
+import com.yangqiongai.agent.harness.durable.InMemoryApprovalStore;
+import com.yangqiongai.agent.harness.durable.InMemoryRunLockStore;
 
 AgentRuntime runtime = new HarnessRuntimeBuilder()
     .name("agent")
@@ -551,11 +595,11 @@ AgentRuntime runtime = new HarnessRuntimeBuilder()
 批量运行评测用例，`LLMEvalJudge` / `RuleEvalJudge` 双模式裁决（参考 `EvalRunnerTest`、`EvalRunnerJudgeTest`）：
 
 ```java
-import com.yangqiong.agent.harness.eval.EvalCase;
-import com.yangqiong.agent.harness.eval.EvalDataset;
-import com.yangqiong.agent.harness.eval.EvalRunner;
-import com.yangqiong.agent.harness.eval.EvalReport;
-import com.yangqiong.agent.harness.eval.RuleEvalJudge;
+import com.yangqiongai.agent.harness.eval.EvalCase;
+import com.yangqiongai.agent.harness.eval.EvalDataset;
+import com.yangqiongai.agent.harness.eval.EvalRunner;
+import com.yangqiongai.agent.harness.eval.EvalReport;
+import com.yangqiongai.agent.harness.eval.RuleEvalJudge;
 
 EvalDataset dataset = EvalDataset.of(List.of(
     EvalCase.of("问题", "期望输出")
@@ -610,7 +654,7 @@ mvn test -Dtest=NewFeatureRealModelTest
 
 ```xml
 <dependency>
-    <groupId>com.yangqiong.agent</groupId>
+    <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-paradigms</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
@@ -630,7 +674,7 @@ mvn test -Dtest=NewFeatureRealModelTest
 **范式公共配置**（`ParadigmOptions`）：
 
 ```java
-import com.yangqiong.agent.harness.paradigms.support.ParadigmOptions;
+import com.yangqiongai.agent.harness.paradigms.support.ParadigmOptions;
 
 ParadigmOptions options = new ParadigmOptions()
     .maxSteps(10)            // 单次执行最大步数，默认 10
@@ -643,8 +687,8 @@ AbstractAgentLoop engine = new ReflexionEngine(options);
 **挂载到运行时**：通过 `HarnessRuntimeBuilder.agentLoop(...)` 挂载，不挂载时默认使用 ReAct 基座：
 
 ```java
-import com.yangqiong.agent.harness.paradigms.ReWooEngine;
-import com.yangqiong.agent.harness.paradigms.RouterEngine;
+import com.yangqiongai.agent.harness.paradigms.ReWooEngine;
+import com.yangqiongai.agent.harness.paradigms.RouterEngine;
 
 // 挂载指定范式
 AgentRuntime runtime = new HarnessRuntimeBuilder()

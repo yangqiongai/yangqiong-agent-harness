@@ -9,10 +9,10 @@
 $env:AI_API_KEY="sk-xxx"; $env:AI_MODEL="deepseek-v4-flash"; $env:AI_BASE_URL="https://api.deepseek.com"
 
 # 运行全部演示
-mvn -pl yangqiong-agent-examples/yangqiong-agent-example-features exec:java -Dexec.mainClass=com.yangqiong.agent.harness.example.features.FeaturesExample
+mvn -pl yangqiong-agent-examples/yangqiong-agent-example-features exec:java -Dexec.mainClass=com.yangqiongai.agent.harness.example.features.FeaturesExample
 
 # 只运行指定演示（可传多个）
-mvn -pl yangqiong-agent-examples/yangqiong-agent-example-features exec:java -Dexec.mainClass=com.yangqiong.agent.harness.example.features.FeaturesExample -Dexec.args="ask-user trace"
+mvn -pl yangqiong-agent-examples/yangqiong-agent-example-features exec:java -Dexec.mainClass=com.yangqiongai.agent.harness.example.features.FeaturesExample -Dexec.args="ask-user trace"
 ```
 
 ## 示例内容（10 项演示）

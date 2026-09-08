@@ -2,7 +2,7 @@ English | [中文](./README.md)
 
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 ![JDK](https://img.shields.io/badge/JDK-17-orange.svg)
-![Gitee](https://gitee.com/yangqiongtech/yangqiong-agent-harness/badge/star.svg)
+![Gitee](https://gitee.com/yangqiongai/yangqiong-agent-harness/badge/star.svg)
 
 # Yangqiong Agent Harness
 
@@ -168,7 +168,10 @@ Yangqiong Agent Harness is a **Maven multi-module project** — the core has zer
 | Model providers | `yangqiong-agent-model-providers` | Anthropic / DashScope / Gemini / Ollama via SPI auto-discovery |
 | JDBC store | `yangqiong-agent-store-jdbc` | Runs / checkpoints / approvals / memory / locks persisted to MySQL (MyBatis-Plus) |
 | Redis store | `yangqiong-agent-store-redis` | Distributed runtime governance store (zero Spring) |
-| Vector store | `yangqiong-agent-store-vector` | Vector persistence for semantic retrieval |
+| Vector store | `yangqiong-agent-store-vector` | Vector persistence for semantic retrieval (SPI + Lucene default impl) |
+| pgvector store | `yangqiong-agent-store-vector-pgvector` | pgvector adapter: pure JDBC, single-table multi-collection + JSONB metadata (PostgreSQL driver at runtime) |
+| Milvus store | `yangqiong-agent-store-vector-milvus` | Milvus adapter for standalone clusters / cloud |
+| Qdrant store | `yangqiong-agent-store-vector-qdrant` | Qdrant adapter via gRPC for standalone clusters / cloud |
 | Local mode | `yangqiong-agent-local-agent` | One-command local agent (SQLite + workspace + shell tools + checkpoint resume) |
 | Server | `yangqiong-agent-server` | HTTP service, SSE event stream, approval resume APIs |
 | Observability | `yangqiong-agent-observability` | Micrometer / OpenTelemetry, built-in Grafana dashboard |
@@ -186,7 +189,7 @@ Yangqiong Agent Harness is a **Maven multi-module project** — the core has zer
 
 ```xml
 <dependency>
-    <groupId>com.yangqiong.agent</groupId>
+    <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -298,8 +301,8 @@ AgentRuntime router = new HarnessRuntimeBuilder()
 
 ## Community & Contact
 
-- **Website** (architecture, extension guides, runnable examples): <https://www.yangqiongtech.com>
-- **Feedback / Issues**: [Feedback guide](https://www.yangqiongtech.com/feedback.html); please do NOT disclose security vulnerabilities publicly — email 1781618435@qq.com with subject prefixed `[SECURITY]`
+- **Website** (architecture, extension guides, runnable examples): <https://www.yangqiongai.com>
+- **Feedback / Issues**: [Feedback guide](https://www.yangqiongai.com/feedback.html); please do NOT disclose security vulnerabilities publicly — email 1781618435@qq.com with subject prefixed `[SECURITY]`
 - **QQ Group (community chat)**: 1107572553
-- **GitHub**: <https://github.com/yangqiongtech/yangqiong-agent-harness>
-- **Gitee mirror**: <https://gitee.com/yangqiongtech/yangqiong-agent-harness>
+- **GitHub**: <https://github.com/yangqiongai/yangqiong-agent-harness>
+- **Gitee mirror**: <https://gitee.com/yangqiongai/yangqiong-agent-harness>
