@@ -197,6 +197,22 @@ Yangqiong Agent Harness is a **Maven multi-module project** — the core has zer
 
 > 💡 Spring Boot users can add `yangqiong-agent-spring-boot-starter` for auto-configuration instead.
 
+**Optional**: for multi-module projects, import the BOM to align all module versions — sub-dependencies no longer need explicit versions:
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.yangqiongai.agent</groupId>
+            <artifactId>yangqiong-agent-bom</artifactId>
+            <version>1.1.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
 **2. Build an agent runtime:**
 
 ```java

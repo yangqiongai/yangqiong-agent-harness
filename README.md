@@ -4,7 +4,7 @@
 ![JDK](https://img.shields.io/badge/JDK-17-orange.svg)
 ![Gitee](https://gitee.com/yangqiongai/yangqiong-agent-harness/badge/star.svg)
 
-# 泱穹 Agent Harness（泱穹智能体框架）
+# 泱穹智能体开发框架（Yangqiong Agent Harness）
 
 > **泱穹智能体框架** 是一套用**纯 Java** 构建的**开箱即用的企业级 AI Agent 运行时框架**：**ReAct 循环 + 六大范式引擎（含自动路由）、子代理与多代理编排、断点持久化执行、权限与安全护栏、全链路可观测与评测**，**零 Spring 依赖**，基于 Reactor 响应式事件流驱动。
 >
@@ -40,11 +40,11 @@
 
 ## 当前 Java 智能体框架现状分析
 
-### 1. 现状总览：Java 智能体框架进入"多强争霸"
+### 1. 现状总览：Java 智能体框架进入生产阶段
 
 过去几年，Python 一直主导 AI 智能体开发，Java 开发者缺少可用且好用的智能体框架。2026 年这一局面已被改写，Java 已形成多个生产可用框架：
 
-| 对比维度                | **泱穹 Agent Harness**              | Spring AI                    | LangChain4j                     | AgentScope (Java)                        |
+| 对比维度                | **泱穹智能体框架**              | Spring AI                    | LangChain4j                     | AgentScope (Java)                        |
 | ------------------- | --------------------------------- | ---------------------------- | ------------------------------- | ---------------------------------------- |
 | 定位                  | **企业级 Java Agent 运行时**            | Spring 官方 AI 生态              | 框架无关、20+ 模型提供方                  | 阿里开源多智能体框架                               |
 | 框架形态                | ✅ **开箱智能体框架**                     | ⚠️ 工具/组装类                    | ⚠️ 工具/组装类                       | ✅ 智能体框架                                  |
@@ -69,7 +69,7 @@
 > 说明：**Semantic Kernel (Java)** 与 **Google ADK (Java)** 未纳入上表——前者是跨语言 SDK，Java 端 Agent 能力薄弱、Agent 循环基本要自行组装，实用性有限；后者深度绑定 Google 生态（Vertex AI / Gemini 模型家族），离开该生态落地门槛高、不好用。二者在企业真实项目中竞争力不足，故不作主要对比对象。
 
 
-### 2. 现状痛点：企业落地仍有"最后一公里"缺口
+### 2. 现状痛点：企业落地仍有生产级缺口
 
 成熟框架让 Java 接上 LLM 变得简单，但当面向**真正的高价值生产系统**时，普遍存在以下缺口：
 
@@ -78,7 +78,7 @@
 - **企业级运行治理缺位**：多轮会话缺乏成本预算、Token 计量、限流、模型路由/降级等生产管控；跨节点分布式的运行锁与一致调度少见。
 - **编排大多停留在"单 Agent + 工具"**：多 Agent 交接、任务自动编排、子代理互斥与结果聚合多是搬用概念，缺少精细的状态机与治理支撑。
 
-### 3. 泱穹：补上 Java 企业级智能体的"最后一公里"
+### 3. 泱穹：补上 Java 企业级智能体的生产级能力
 
 泱穹智能体框架正是针对上述缺口而设计，与前代框架形成**互补而非重复造轮子**的差异化定位：
 
@@ -91,11 +91,11 @@
 
 > 简单说：Spring AI 与 LangChain4j 解决了"Java 能不能接 LLM"，泱穹智能体框架负责解决"接了之后能否稳定可控地跑进企业生产系统"。
 
-### 4. 对标主流 Python 智能体框架：核心能力全面看齐
+### 4. 对标主流 Python 智能体框架：核心能力全面看齐并超前
 
 以 2026 年 Python 生态事实标准为基准（LangGraph 为持久化执行标杆、CrewAI 为角色编排代表、OpenAI Agents SDK 为轻量官方参考）逐项对标，泱穹智能体框架在智能体运行时核心维度**全面看齐、多项占优**：
 
-| 能力域 | 泱穹 Agent Harness | 主流 Python 框架（LangGraph / CrewAI / OpenAI SDK） | 结论 |
+| 能力域 | 泱穹智能体框架 | 主流 Python 框架（LangGraph / CrewAI / OpenAI SDK） | 结论 |
 | --- | --- | --- | --- |
 | 持久化执行 | ✅ **四存储四实现**（RunStore/CheckpointStore/RunLockStore/ApprovalStore × InMemory/SQLite/JDBC/Redis） | LangGraph 有 checkpoint（唯一内置）；CrewAI、OpenAI SDK 无内置 | 持平 LangGraph，额外具备跨节点运行锁 |
 | 人工在环 | ✅ **审批挂起+账本恢复、ask_user 澄清续接，闭环** | LangGraph 一等公民；OpenAI SDK 仅会话记忆 | 持平偏优（恢复闭环更完整） |
@@ -132,7 +132,7 @@
 
 ### 分层架构
 
-![泱穹 Agent Harness 分层架构图](https://yangqiong-1306352078.cos.ap-shanghai.myqcloud.com/website/biz/architecture-overview.jpg)
+![泱穹智能体框架分层架构图](https://yangqiong-1306352078.cos.ap-shanghai.myqcloud.com/website/biz/architecture-overview.jpg)
 
 ***
 
@@ -201,6 +201,30 @@
 ```
 
 > 💡 Spring Boot 用户可直接引入 `yangqiong-agent-spring-boot-starter` 实现自动装配，无需手动构建运行时。
+
+**可选**：多模块场景建议通过 BOM 统一版本，后续引入任意模块都无需再写版本号：
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.yangqiongai.agent</groupId>
+            <artifactId>yangqiong-agent-bom</artifactId>
+            <version>1.1.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+```xml
+<!-- 版本由 BOM 管理 -->
+<dependency>
+    <groupId>com.yangqiongai.agent</groupId>
+    <artifactId>yangqiong-agent-store-jdbc</artifactId>
+</dependency>
+```
 
 ### 2. 构建 Agent 运行时
 

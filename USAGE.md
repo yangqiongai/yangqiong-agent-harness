@@ -1,4 +1,4 @@
-# 泱穹 Agent Harness 基础使用手册
+# 泱穹智能体框架基础使用手册
 
 > 本手册基于框架的实际测试用例梳理，覆盖从「引入依赖」到「复杂多 Agent 编排」的最常用功能点。所有示例均可在 `src/test/java/com/yangqiongai/agent/harness/` 对应测试中找到真实用例佐证。
 
@@ -38,6 +38,22 @@
     <artifactId>yangqiong-agent-core</artifactId>
     <version>1.1.0</version>
 </dependency>
+```
+
+**可选**：多模块场景建议通过 BOM 统一版本，后续引入任意模块（store-jdbc、store-redis、store-vector、spring-boot-starter 等）都无需再写版本号：
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.yangqiongai.agent</groupId>
+            <artifactId>yangqiong-agent-bom</artifactId>
+            <version>1.1.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
 ```
 
 ---
