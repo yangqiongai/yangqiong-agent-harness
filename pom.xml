@@ -6,11 +6,12 @@
 
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-harness</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.1.0</version>
     <packaging>pom</packaging>
 
     <name>yangqiong-agent-harness</name>
     <description>泱穹智能体框架（Yangqiong Agent Harness）多模块聚合工程</description>
+    <url>https://github.com/yangqiongai/yangqiong-agent-harness</url>
 
     <licenses>
         <license>
@@ -22,11 +23,18 @@
 
     <developers>
         <developer>
-            <name>yangqiong</name>
+            <name>yangqiongai</name>
+            <email>1781618453@qq.com</email>
             <organization>yangqiongai.com</organization>
             <organizationUrl>https://yangqiongai.com</organizationUrl>
         </developer>
     </developers>
+
+    <scm>
+        <url>https://github.com/yangqiongai/yangqiong-agent-harness</url>
+        <connection>scm:git:git://github.com/yangqiongai/yangqiong-agent-harness.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/yangqiongai/yangqiong-agent-harness.git</developerConnection>
+    </scm>
 
     <modules>
         <module>yangqiong-agent-bom</module>
@@ -38,10 +46,11 @@
 
     <properties>
         <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- 可复现构建时间戳（Maven Central 校验工具推荐项） -->
+        <project.build.outputTimestamp>2026-09-08T00:00:00Z</project.build.outputTimestamp>
 
         <reactor.version>3.7.8</reactor.version>
         <slf4j.version>2.0.17</slf4j.version>
@@ -96,6 +105,13 @@
                 <groupId>com.yangqiongai.agent</groupId>
                 <artifactId>yangqiong-agent-store-vector</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yangqiongai.agent</groupId>
+                <artifactId>yangqiong-agent-store-vector</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+                <classifier>tests</classifier>
             </dependency>
             <dependency>
                 <groupId>com.yangqiongai.agent</groupId>
@@ -352,8 +368,7 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.13.0</version>
                     <configuration>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
+                        <release>${maven.compiler.release}</release>
                         <encoding>${project.build.sourceEncoding}</encoding>
                         <showWarnings>true</showWarnings>
                     </configuration>
@@ -385,7 +400,12 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>3.6.3</version>
+                    <version>3.11.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.0</version>
                 </plugin>
                 <plugin>
                     <groupId>com.mycila</groupId>
@@ -395,7 +415,17 @@
             </plugins>
         </pluginManagement>
         <plugins>
-            <!-- 全局质量守护：禁止同一依赖出现多个版本 -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.11.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <excludeArtifacts>yangqiong-agent-examples,yangqiong-agent-example-eval,yangqiong-agent-example-features,yangqiong-agent-example-hello-world,yangqiong-agent-example-local,yangqiong-agent-example-multi-agent,yangqiong-agent-example-observability,yangqiong-agent-example-paradigms,yangqiong-agent-example-server,yangqiong-agent-example-spring-boot</excludeArtifacts>
+                    <autoPublish>false</autoPublish>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -445,9 +475,6 @@
             </plugin>
         </plugins>
     </build>
-
-    <!-- 发布专用：Release 阶段（mvn deploy -P release）附加 sources/javadoc 制品；
-         gpg 签名与 Maven Central 发布仓库在真正开源后按需补充 -->
     <profiles>
         <profile>
             <id>release</id>
@@ -480,6 +507,37 @@
                             <failOnError>false</failOnError>
                             <doclint>none</doclint>
                         </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>enforce-release</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <!-- 发布前拦截 SNAPSHOT 依赖，漏切版本号时尽早失败 -->
+                                        <requireReleaseDeps/>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>

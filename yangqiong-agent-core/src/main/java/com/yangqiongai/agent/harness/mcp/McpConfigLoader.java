@@ -21,6 +21,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -387,13 +388,37 @@ public final class McpConfigLoader {
                 if (dir.isBlank()) {
                     continue;
                 }
-                Path candidate = Paths.get(dir, name);
+                Path base = parsePathEntry(dir);
+                if (base == null) {
+                    continue;
+                }
+                Path candidate = base.resolve(name);
                 if (Files.isRegularFile(candidate)) {
                     return candidate;
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * 解析PATH或环境变量中的路径条目，剥离Windows扩展长度前缀并容忍非法条目
+     * @param dir
+     * @return 可用路径，无法解析时返回null
+     */
+    static Path parsePathEntry(String dir) {
+        String value = dir;
+        // Windows扩展长度前缀 \\?\ 不被Path.of接受，UNC设备形式需还原为 \\server\share
+        if (value.startsWith("\\\\?\\UNC\\")) {
+            value = "\\\\" + value.substring("\\\\?\\UNC\\".length());
+        } else if (value.startsWith("\\\\?\\")) {
+            value = value.substring("\\\\?\\".length());
+        }
+        try {
+            return Paths.get(value);
+        } catch (InvalidPathException e) {
+            return null;
+        }
     }
 
     /**
@@ -405,7 +430,11 @@ public final class McpConfigLoader {
         for (String key : envKeys) {
             String value = System.getenv(key);
             if (value != null) {
-                Path candidate = toNodeExecutable(Paths.get(value));
+                Path base = parsePathEntry(value);
+                if (base == null) {
+                    continue;
+                }
+                Path candidate = toNodeExecutable(base);
                 if (candidate != null) {
                     return candidate;
                 }
@@ -438,7 +467,11 @@ public final class McpConfigLoader {
                 if (dir.isBlank()) {
                     continue;
                 }
-                Path candidate = toNodeExecutable(Paths.get(dir));
+                Path base = parsePathEntry(dir);
+                if (base == null) {
+                    continue;
+                }
+                Path candidate = toNodeExecutable(base);
                 if (candidate != null) {
                     return candidate;
                 }

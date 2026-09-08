@@ -113,7 +113,7 @@ public class RealModelTravelApprovalExample {
         }
         initModel();
         demoSingleTurn();
-      //  demoMultiSubagent();
+        demoMultiSubagent();
     }
 
     /**

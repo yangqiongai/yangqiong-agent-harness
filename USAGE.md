@@ -22,6 +22,7 @@
 - [16. 评测（EvalRunner）](#16-评测evalrunner)
 - [17. 运行单元测试](#17-运行单元测试)
 - [18. 智能体范式（paradigms 扩展）](#18-智能体范式paradigms-扩展)
+- [19. Spring Boot Starter 接入](#19-spring-boot-starter-接入)
 
 ---
 
@@ -35,7 +36,7 @@
 <dependency>
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -656,7 +657,7 @@ mvn test -Dtest=NewFeatureRealModelTest
 <dependency>
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-paradigms</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -710,6 +711,72 @@ AgentRuntime routerRuntime = new HarnessRuntimeBuilder()
 Router 路由规则：无工具时自动排除 ReAct / Plan-Execute / ReWoo；分类输出不可解析时回退兜底（有工具 ReAct / 无工具 Self-Ask）；确定性场景可用 `new RouterEngine(resolver, RouterEngine.ParadigmType.REWOO)` 强制指定范式跳过分类轮。
 
 **统一暂停恢复语义**：所有范式引擎继承 `AbstractAgentLoop` 模板，与 ReAct 基座共享同一套暂停/恢复能力——危险工具审批挂起后经 `resume(confirmResults, context)` 账本重放恢复；人工澄清（ask_user）挂起后经 `resumeWithClarification(answers, context)` 按问题文本匹配续跑。
+
+---
+
+## 19. Spring Boot Starter 接入
+
+Spring Boot 3 项目可引入 `yangqiong-agent-spring-boot-starter`，以 `ai.harness.*` 配置前缀自动装配运行时，无需手动构建：
+
+```xml
+<dependency>
+    <groupId>com.yangqiongai.agent</groupId>
+    <artifactId>yangqiong-agent-spring-boot-starter</artifactId>
+    <version>1.1.0</version>
+</dependency>
+```
+
+**自动装配的 Bean**：
+
+| Bean | 条件 | 说明 |
+| --- | --- | --- |
+| `AgentModelRegistry` / `HarnessModelFactory` / `AgentModel` | `ai.harness.model.enabled`（默认 true） | 注册 OpenAI/Anthropic/DashScope/Gemini/Ollama 五家协议提供方，按 `model-name` 产出默认模型 |
+| `DistributedStores` | `ai.harness.store.type=memory`（默认） | 内存存储聚合；注入自定义 `DistributedStores` Bean 后自动失效 |
+| `TraceEmitter` | `ai.harness.tracing.enabled=true` | 日志型追踪导出器，默认不装配 |
+| `PersistentVectorStore` / `Retriever` | `ai.harness.vector.enabled=true` 且类路径有 store-vector | 向量存储与语义检索器，见下文 |
+| `HarnessRuntimeBuilder` / `AgentRuntime` | `ai.harness.runtime.enabled`（默认 true）且模型就绪 | 组装全部组件构建运行时 |
+
+**核心配置项**（`application.yml`）：
+
+```yaml
+ai:
+  harness:
+    model:
+      default-provider: dashscope        # openai / anthropic / dashscope / gemini / ollama
+      model-name: deepseek-v3
+      providers:
+        dashscope:
+          api-key: ${DASHSCOPE_API_KEY}
+          base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    runtime:
+      name: my-agent                     # Agent 名称
+      system-prompt: 你是一个智能助手
+      max-iters: 10                      # 最大推理迭代次数
+      web-enabled: false                 # Web 工具
+      ask-user-enabled: false            # 向用户提问工具
+      plan-mode-enabled: false           # 计划模式
+      subagents-enabled: false           # 多子代理
+    store:
+      type: memory                       # memory / jdbc / redis（jdbc/redis 由扩展模块提供）
+    tracing:
+      enabled: false                     # 日志追踪
+```
+
+**向量存储（可选）**：类路径额外引入 `yangqiong-agent-store-vector`（本地 Lucene）或任一适配器模块（`store-vector-milvus` / `store-vector-qdrant` / `store-vector-pgvector`），即可通过 `ai.harness.vector` 装配：
+
+```yaml
+ai:
+  harness:
+    vector:
+      enabled: true
+      store: lucene                      # lucene / milvus / qdrant / pgvector
+      config:
+        dataDir: ./data/vector           # 透传给对应适配器的归一化键值
+```
+
+- `config` 键值按适配器约定**原样透传**（Spring 不转换 Map 键名，须直接写适配器要求的键名形式，否则适配器报缺少配置）：Lucene 用 `dataDir`，Milvus 用 `uri` / `token`，Qdrant 用 `uri` / `api-key`，pgvector 用 `jdbcUrl` / `user` / `password` / `table`
+- 容器内已注册 `EmbeddingModel` Bean 时优先使用，否则降级为零依赖的哈希嵌入模型
+- 装配产出 `PersistentVectorStore`（含长期向量记忆 `memory()`）与跨集合语义检索器 `Retriever` 两个 Bean；自定义 `Retriever` Bean 注入后检索器装配自动失效
 
 ---
 

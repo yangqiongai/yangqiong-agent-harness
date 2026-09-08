@@ -37,7 +37,7 @@ import com.yangqiongai.agent.harness.model.provider.OpenAIModelProvider;
  * 模型自动装配
  * <p>
  * 基于 ai.harness.model 配置构建模型注册表、模型工厂与默认模型Bean。
- * 自动注册 OpenAI/Anthropic/DashScope/Ollama 四种协议提供方。
+ * 自动注册 OpenAI/Anthropic/DashScope/Gemini/Ollama 五种协议提供方。
  * </p>
  * @author yangqiong
  */

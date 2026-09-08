@@ -196,7 +196,7 @@
 <dependency>
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 

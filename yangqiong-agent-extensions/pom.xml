@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.yangqiongai.agent</groupId>
         <artifactId>yangqiong-agent-harness</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.1.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -15,7 +15,7 @@
     <packaging>pom</packaging>
 
     <name>yangqiong-agent-extensions</name>
-    <description>泱穹智能体框架共享存储扩展模块聚合</description>
+    <description>泱穹智能体扩展模块聚合</description>
 
     <modules>
         <module>yangqiong-agent-store-jdbc</module>
