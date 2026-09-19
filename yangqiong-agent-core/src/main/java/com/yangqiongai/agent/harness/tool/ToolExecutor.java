@@ -36,10 +36,15 @@ import com.yangqiongai.agent.harness.core.message.AgentToolResultBlock;
 import com.yangqiongai.agent.harness.core.message.AgentToolUseBlock;
 import com.yangqiongai.agent.harness.core.tool.AgentTool;
 import com.yangqiongai.agent.harness.core.tool.AgentToolCallParam;
+import com.yangqiongai.agent.harness.spi.ToolInvocation;
+import com.yangqiongai.agent.harness.spi.ToolInvocationGuard;
+import com.yangqiongai.agent.harness.spi.ToolInvocationOutcome;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Comparator;
 
 /**
  * 工具执行器
@@ -48,6 +53,11 @@ import reactor.core.publisher.Mono;
 public class ToolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(ToolExecutor.class);
+
+    /**
+     * 审计摘要最大字符数（防敏感内容与大结果入库）
+     */
+    private static final int AUDIT_SUMMARY_MAX_CHARS = 200;
 
     /**
      * 工具箱
@@ -83,6 +93,11 @@ public class ToolExecutor {
      * 工具执行记录存储（可选，非null时同幂等键重复调用复用首次结果）
      */
     private volatile ToolExecutionStore ledger;
+
+    /**
+     * 工具调用守卫链（可选，before拦截/after审计，守卫异常不阻断主流程）
+     */
+    private volatile List<ToolInvocationGuard> guards;
 
     public ToolExecutor(HarnessToolkit toolkit) {
         this(toolkit, null, null, null, null);
@@ -120,6 +135,24 @@ public class ToolExecutor {
      */
     public ToolExecutor ledger(ToolExecutionStore ledger) {
         this.ledger = ledger;
+        return this;
+    }
+
+    /**
+     * 注册工具调用守卫（多次调用累积，按order升序执行）
+     * @param guard
+     * @return
+     */
+    public ToolExecutor guard(ToolInvocationGuard guard) {
+        if (guard != null) {
+            synchronized (this) {
+                if (guards == null) {
+                    guards = new ArrayList<>();
+                }
+                guards.add(guard);
+                guards.sort(Comparator.comparingInt(ToolInvocationGuard::order));
+            }
+        }
         return this;
     }
 
@@ -196,6 +229,28 @@ public class ToolExecutor {
             }
         }
 
+        // 守卫前置拦截：画像/出口白名单等平台守卫可拒绝，拒绝同步进事后审计
+        List<ToolInvocationGuard> effectiveGuards = guards;
+        if (effectiveGuards != null && !effectiveGuards.isEmpty()) {
+            ToolInvocation invocation = new ToolInvocation(resolveAgentCode(context), toolName, toolUse.getToolUseId(),
+                    context != null ? context.getScopeId() : null,
+                    context != null ? context.getUserId() : null,
+                    currentRunId(context), toolUse.getInput());
+            for (ToolInvocationGuard guard : effectiveGuards) {
+                ToolInvocationGuard.Decision decision = invokeBeforeSafely(guard, invocation);
+                if (decision != null && decision.isDenied()) {
+                    String reason = decision.getReason() != null ? decision.getReason() : "未说明";
+                    notifyAfterSafely(effectiveGuards, new ToolInvocationOutcome(invocation.getAgentCode(),
+                            toolName, toolUse.getToolUseId(),
+                            invocation.getScopeId(), invocation.getUserId(), invocation.getRunId(),
+                            true, false, reason, 0));
+                    AgentToolResultBlock errorResult = AgentToolResultBlock.error(
+                            toolUse.getToolUseId(), "守卫拒绝: " + toolName + " -> " + reason);
+                    return Mono.just(MessageFactory.createToolMessage(errorResult));
+                }
+            }
+        }
+
         Map<String, Object> input = toolUse.getInput();
         if (middlewareChain != null) {
             input = middlewareChain.applyOnToolCall(toolName, input, context);
@@ -225,6 +280,7 @@ public class ToolExecutor {
         }
 
         // 工具调用超时控制，防止单个卡住的工具阻塞整个ReAct循环
+        long startMillis = System.currentTimeMillis();
         Mono<AgentToolResultBlock> resultMono = tool.callAsync(param);
         Duration toolTimeout = engineContext != null ? engineContext.getToolCallTimeout() : null;
         if (toolTimeout != null && !toolTimeout.isZero() && !toolTimeout.isNegative()) {
@@ -241,9 +297,97 @@ public class ToolExecutor {
                     }
                     return result;
                 })
+                .map(result -> {
+                    // 守卫事后钩子：结果审计与异常检测，异常不阻断主流程
+                    notifyAfterSafely(effectiveGuards, new ToolInvocationOutcome(resolveAgentCode(context),
+                            toolName, toolUse.getToolUseId(),
+                            param.getScopeId(), param.getUserId(), currentRunId(context),
+                            false, !result.isError(), summarize(result),
+                            System.currentTimeMillis() - startMillis));
+                    return result;
+                })
                 .map(result -> result.withToolUseId(toolUse.getToolUseId()))
                 .map(MessageFactory::createToolMessage)
-                .onErrorResume(e -> handleToolFailure(toolUse, tool, context, engineContext, attempt, e));
+                .onErrorResume(e -> {
+                    if (effectiveGuards != null && !effectiveGuards.isEmpty()) {
+                        notifyAfterSafely(effectiveGuards, new ToolInvocationOutcome(resolveAgentCode(context),
+                                toolName, toolUse.getToolUseId(),
+                                param.getScopeId(), param.getUserId(), currentRunId(context),
+                                false, false, summarizeError(e),
+                                System.currentTimeMillis() - startMillis));
+                    }
+                    return handleToolFailure(toolUse, tool, context, engineContext, attempt, e);
+                });
+    }
+
+    /**
+     * 读取运行上下文中的Agent编码（平台适配层写入，缺省null）
+     * @param context
+     * @return
+     */
+    private String resolveAgentCode(AgentRuntimeContext context) {
+        Object agentCode = context != null ? context.get("agentCode") : null;
+        return agentCode != null ? agentCode.toString() : null;
+    }
+
+    /**
+     * 安全调用守卫前置钩子（守卫异常视为放行，不阻断主流程）
+     * @param guard
+     * @param invocation
+     * @return
+     */
+    private ToolInvocationGuard.Decision invokeBeforeSafely(ToolInvocationGuard guard, ToolInvocation invocation) {
+        try {
+            return guard.before(invocation);
+        } catch (Exception e) {
+            log.warn("工具守卫前置钩子异常，视为放行: guard={}, tool={}",
+                    guard.getClass().getSimpleName(), invocation.getToolName(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 安全回调守卫事后钩子（守卫异常仅记录告警）
+     * @param guards
+     * @param outcome
+     */
+    private void notifyAfterSafely(List<ToolInvocationGuard> guards, ToolInvocationOutcome outcome) {
+        if (guards == null) {
+            return;
+        }
+        for (ToolInvocationGuard guard : guards) {
+            try {
+                guard.after(outcome);
+            } catch (Exception e) {
+                log.warn("工具守卫事后钩子异常: guard={}, tool={}",
+                        guard.getClass().getSimpleName(), outcome.getToolName(), e);
+            }
+        }
+    }
+
+    /**
+     * 提取工具结果审计摘要（截断防敏感内容与大结果入库）
+     * @param result
+     * @return
+     */
+    private String summarize(AgentToolResultBlock result) {
+        String text = result.getTextContent();
+        if (text == null) {
+            return "";
+        }
+        return text.length() > AUDIT_SUMMARY_MAX_CHARS
+                ? text.substring(0, AUDIT_SUMMARY_MAX_CHARS) : text;
+    }
+
+    /**
+     * 提取异常审计摘要
+     * @param error
+     * @return
+     */
+    private String summarizeError(Throwable error) {
+        String message = error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
+        return message.length() > AUDIT_SUMMARY_MAX_CHARS
+                ? message.substring(0, AUDIT_SUMMARY_MAX_CHARS) : message;
     }
 
     /**

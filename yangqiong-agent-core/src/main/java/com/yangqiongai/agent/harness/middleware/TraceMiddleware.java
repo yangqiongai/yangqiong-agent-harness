@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -144,7 +145,12 @@ public class TraceMiddleware implements AgentMiddleware {
     }
 
     /**
-     * 通用Span包裹：入栈建Span，出栈导出SpanInfo
+     * 通用Span包裹：入栈建Span，流终止时同步导出SpanInfo
+     * <p>
+     * 导出必须挂在终止信号回调（doOnComplete/doOnError/doOnCancel）上：
+     * 这些回调先于终止信号向下游传播执行，保证消费者在流结束后立即可见全部Span；
+     * 若使用doFinally（在信号传播之后执行），block返回与Span导出存在竞态，可能丢尾。
+     * </p>
      * @param context
      * @param operation
      * @param attributes
@@ -165,27 +171,54 @@ public class TraceMiddleware implements AgentMiddleware {
         String parentSpanId = pushSpan(context, spanId);
         long startNanos = System.nanoTime();
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
+        AtomicBoolean finished = new AtomicBoolean(false);
         Flux<AgentEvent> flux = body.get();
         if (onEvent != null) {
             flux = flux.doOnNext(onEvent);
         }
-        flux = flux.doOnError(errorRef::set);
-        return flux.doFinally(signalType -> {
-            popSpan(context, spanId);
-            long endMillis = System.currentTimeMillis();
-            long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
-            Throwable error = errorRef.get();
-            String status = error != null ? "ERROR" : "OK";
-            String errorMessage = error != null && error.getMessage() != null
-                    ? truncate(error.getMessage(), 1024) : null;
-            enrichAttributes(context, attributes);
-            try {
-                emitter.onSpan(new SpanInfo(traceId, spanId, parentSpanId, operation, durationMs, attributes,
-                        status, errorMessage, endMillis - durationMs));
-            } catch (Exception e) {
-                log.warn("[TraceMiddleware] 导出Span异常: {}", e.getMessage());
-            }
-        });
+        return flux
+                .doOnComplete(() -> exportSpan(traceId, spanId, parentSpanId, operation, startNanos,
+                        attributes, context, errorRef.get(), finished))
+                .doOnError(e -> {
+                    errorRef.set(e);
+                    exportSpan(traceId, spanId, parentSpanId, operation, startNanos,
+                            attributes, context, e, finished);
+                })
+                .doOnCancel(() -> exportSpan(traceId, spanId, parentSpanId, operation, startNanos,
+                        attributes, context, errorRef.get(), finished));
+    }
+
+    /**
+     * 出栈并导出SpanInfo（仅导出一次）
+     * @param traceId
+     * @param spanId
+     * @param parentSpanId
+     * @param operation
+     * @param startNanos
+     * @param attributes
+     * @param context
+     * @param error
+     * @param finished
+     */
+    private void exportSpan(String traceId, String spanId, String parentSpanId, String operation,
+                            long startNanos, Map<String, Object> attributes, AgentRuntimeContext context,
+                            Throwable error, AtomicBoolean finished) {
+        if (!finished.compareAndSet(false, true)) {
+            return;
+        }
+        popSpan(context, spanId);
+        long endMillis = System.currentTimeMillis();
+        long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
+        String status = error != null ? "ERROR" : "OK";
+        String errorMessage = error != null && error.getMessage() != null
+                ? truncate(error.getMessage(), 1024) : null;
+        enrichAttributes(context, attributes);
+        try {
+            emitter.onSpan(new SpanInfo(traceId, spanId, parentSpanId, operation, durationMs, attributes,
+                    status, errorMessage, endMillis - durationMs));
+        } catch (Exception e) {
+            log.warn("[TraceMiddleware] 导出Span异常: {}", e.getMessage());
+        }
     }
 
     /**

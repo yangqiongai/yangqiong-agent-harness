@@ -119,6 +119,28 @@ public class AgentRunRecord {
     }
 
     /**
+     * 按持久化快照恢复运行记录(转换场景直接装配,不走状态机校验)
+     * @param state 当前状态
+     * @param version 乐观锁版本号
+     * @param updatedAt 更新时间戳(毫秒)
+     * @param error 失败原因
+     * @param transitions 状态迁移历史
+     */
+    public synchronized void restore(AgentRunState state, long version, long updatedAt,
+                                     String error, List<StateTransition> transitions) {
+        this.state = state;
+        this.version = version;
+        this.updatedAt = updatedAt;
+        if (error != null) {
+            this.error = error;
+        }
+        if (transitions != null) {
+            this.transitions.clear();
+            this.transitions.addAll(transitions);
+        }
+    }
+
+    /**
      * 尝试按期望版本做乐观锁替换
      * @param expectedVersion
      * @param updater
@@ -199,7 +221,7 @@ public class AgentRunRecord {
          */
         private final String reason;
 
-        StateTransition(AgentRunState state, long timestamp, String reason) {
+        public StateTransition(AgentRunState state, long timestamp, String reason) {
             this.state = state;
             this.timestamp = timestamp;
             this.reason = reason;

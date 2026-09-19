@@ -300,7 +300,13 @@ public final class CronExpression {
                 }
                 addRange(values, lo, hi, step);
             } else {
-                values.add(parseValue(rangePart.trim(), min, max, names));
+                int value = parseValue(rangePart.trim(), min, max, names);
+                if (stepPart != null) {
+                    // a/b语义为从a开始按步长b递增到字段上限，如分钟0/15 → 0,15,30,45
+                    addRange(values, value, max, step);
+                } else {
+                    values.add(value);
+                }
             }
         }
         if (values.isEmpty()) {

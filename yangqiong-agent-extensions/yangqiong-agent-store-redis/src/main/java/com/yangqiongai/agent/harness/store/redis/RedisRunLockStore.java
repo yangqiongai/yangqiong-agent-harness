@@ -21,7 +21,6 @@ import java.util.Optional;
 
 import com.yangqiongai.agent.harness.durable.RunLockStore;
 import redis.clients.jedis.JedisPooled;
-import redis.clients.jedis.params.SetParams;
 
 /**
  * 运行锁存储Redis实现
@@ -34,6 +33,14 @@ import redis.clients.jedis.params.SetParams;
 public class RedisRunLockStore implements RunLockStore {
 
     private static final String LOCK_KEY = "harness:lock:%s";
+
+    private static final String TRYLOCK_SCRIPT =
+            "local current = redis.call('GET', KEYS[1]) "
+                    + "if current == ARGV[1] then "
+                    + "return redis.call('PEXPIRE', KEYS[1], ARGV[2]) end "
+                    + "if current == false then "
+                    + "return redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2], 'NX') and 1 or 0 end "
+                    + "return 0";
 
     private static final String RENEW_SCRIPT =
             "if redis.call('GET', KEYS[1]) == ARGV[1] then "
@@ -63,8 +70,10 @@ public class RedisRunLockStore implements RunLockStore {
         if (runId == null || ownerNodeId == null || lockTtl == null || lockTtl.isNegative()) {
             return false;
         }
-        return jedis.set(lockKey(runId), ownerNodeId,
-                SetParams.setParams().nx().px(lockTtl.toMillis())) != null;
+        // 同节点重复加锁视为续期（多断点恢复场景幂等），异节点竞争时NX拒绝
+        Object result = jedis.eval(TRYLOCK_SCRIPT, List.of(lockKey(runId)),
+                List.of(ownerNodeId, String.valueOf(lockTtl.toMillis())));
+        return "1".equals(String.valueOf(result));
     }
 
     @Override

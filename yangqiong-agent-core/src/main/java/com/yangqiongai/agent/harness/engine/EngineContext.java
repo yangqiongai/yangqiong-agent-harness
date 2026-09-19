@@ -40,6 +40,7 @@ import com.yangqiongai.agent.harness.core.message.AgentChatUsage;
 import com.yangqiongai.agent.harness.core.message.AgentMessage;
 import com.yangqiongai.agent.harness.core.model.AgentGenerateOptions;
 import com.yangqiongai.agent.harness.core.tool.AgentTool;
+import com.yangqiongai.agent.harness.core.trace.ContextSnapshotListener;
 
 /**
  * 引擎上下文
@@ -222,6 +223,16 @@ public class EngineContext {
      * 持久执行状态跟踪器（可空，为空时运行不落RunRecord）
      */
     private volatile DurableExecutionTracker durableTracker;
+
+    /**
+     * 上下文快照监听器（可空，为空时引擎完全跳过快照采集）
+     */
+    private volatile ContextSnapshotListener contextSnapshotListener;
+
+    /**
+     * 模型调用序号（原子操作保证线程安全，从1开始）
+     */
+    private final AtomicInteger modelCallSeq = new AtomicInteger(0);
 
     /**
      * 工具渐进加载状态（可空，为空时全量下发schema；非空且progressive时按常驻/已转正裁剪）
@@ -645,6 +656,30 @@ public class EngineContext {
      */
     public void setDurableTracker(DurableExecutionTracker durableTracker) {
         this.durableTracker = durableTracker;
+    }
+
+    /**
+     * 获取上下文快照监听器，未暴露时为null
+     * @return
+     */
+    public ContextSnapshotListener getContextSnapshotListener() {
+        return contextSnapshotListener;
+    }
+
+    /**
+     * 注入上下文快照监听器
+     * @param contextSnapshotListener
+     */
+    public void setContextSnapshotListener(ContextSnapshotListener contextSnapshotListener) {
+        this.contextSnapshotListener = contextSnapshotListener;
+    }
+
+    /**
+     * 获取下一次模型调用序号（从1开始递增）
+     * @return
+     */
+    public int nextModelCallSeq() {
+        return modelCallSeq.incrementAndGet();
     }
 
     public String getAgentName() {

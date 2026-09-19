@@ -122,6 +122,7 @@ import com.yangqiongai.agent.harness.tool.ToolExecutionStore;
 import com.yangqiongai.agent.harness.tool.ToolExecutor;
 import com.yangqiongai.agent.harness.tool.ToolLoadingState;
 import com.yangqiongai.agent.harness.tool.FileToolkit;
+import com.yangqiongai.agent.harness.core.trace.ContextSnapshotListener;
 import com.yangqiongai.agent.harness.core.trace.TraceEmitter;
 import com.yangqiongai.agent.harness.event.EventBus;
 import org.slf4j.Logger;
@@ -200,6 +201,11 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
      * 中间件列表
      */
     private List<AgentMiddleware> middlewares = new ArrayList<>();
+
+    /**
+     * 工具调用守卫链（before拦截/after审计，build时装入工具执行器）
+     */
+    private final List<com.yangqiongai.agent.harness.spi.ToolInvocationGuard> invocationGuards = new ArrayList<>();
 
     /**
      * JDK SPI插件自动发现开关，默认关闭
@@ -652,6 +658,11 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
     private TraceEmitter traceEmitter;
 
     /**
+     * 上下文快照监听器（可选，设置后每次模型调用前回调采集快照，为空时零开销）
+     */
+    private ContextSnapshotListener contextSnapshotListener;
+
+    /**
      * 内容审查策略（可选，设置后ContentModerationMiddleware加入链，未设置默认放行）
      */
     private ContentModerationPolicy contentModerationPolicy;
@@ -679,6 +690,16 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
      */
     public HarnessRuntimeBuilder traceEmitter(TraceEmitter traceEmitter) {
         this.traceEmitter = traceEmitter;
+        return this;
+    }
+
+    /**
+     * 设置上下文快照监听器，每次模型调用前回调采集快照
+     * @param contextSnapshotListener
+     * @return
+     */
+    public HarnessRuntimeBuilder contextSnapshotListener(ContextSnapshotListener contextSnapshotListener) {
+        this.contextSnapshotListener = contextSnapshotListener;
         return this;
     }
 
@@ -799,6 +820,18 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
     public HarnessRuntimeBuilder addCustomizer(com.yangqiongai.agent.harness.spi.RuntimeCustomizer customizer) {
         if (customizer != null) {
             this.customizers.add(customizer);
+        }
+        return this;
+    }
+
+    /**
+     * 注册工具调用守卫（多次调用累积，before拦截/after审计）
+     * @param guard
+     * @return
+     */
+    public HarnessRuntimeBuilder guard(com.yangqiongai.agent.harness.spi.ToolInvocationGuard guard) {
+        if (guard != null) {
+            this.invocationGuards.add(guard);
         }
         return this;
     }
@@ -2174,6 +2207,9 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
                 allowedTools, deniedTools)
                 .policyGate(effectivePolicyGate)
                 .ledger(toolExecutionStore != null ? toolExecutionStore : new InMemoryToolExecutionStore());
+        for (com.yangqiongai.agent.harness.spi.ToolInvocationGuard guard : invocationGuards) {
+            toolExecutor.guard(guard);
+        }
 
         ModelResponseParser responseParser = new ModelResponseParser();
         ReActEngine reactEngine = new ReActEngine(modelCaller, toolExecutor, middlewareChain, responseParser,
@@ -2194,6 +2230,10 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
         // 事件监听器注册中心：配置后运行时所有Agent事件自动广播给监听器
         if (eventBus != null) {
             reactEngine.eventBus(eventBus);
+        }
+        // 上下文快照监听器：配置后每次模型调用前回调采集快照
+        if (contextSnapshotListener != null) {
+            reactEngine.contextSnapshotListener(contextSnapshotListener);
         }
         // 自定义执行循环替换默认ReActEngine，共享事件总线与持久执行装配
         AgentLoop engine = agentLoop != null ? agentLoop : reactEngine;
@@ -2223,6 +2263,7 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
                 .tokenBudgetPolicy(tokenBudgetPolicy)
                 .costBudgetPolicy(costBudgetPolicy)
                 .eventBus(eventBus)
+                .contextSnapshotListener(contextSnapshotListener)
                 .modelPricingRegistry(modelPricingRegistry)
                 .modelCode(modelCode)
                 .durableTracker(durableTracker)

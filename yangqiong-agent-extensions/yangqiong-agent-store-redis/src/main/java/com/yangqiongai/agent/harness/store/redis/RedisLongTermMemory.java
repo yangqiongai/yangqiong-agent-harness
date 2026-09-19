@@ -96,6 +96,10 @@ public class RedisLongTermMemory implements AgentLongTermMemory {
             return;
         }
         if (scopeId != null) {
+            // 不存在的记忆删除视为幂等空操作，仅对存在但跨作用域的删除做所有权拦截
+            if (!jedis.exists(memoryKey(memoryId))) {
+                return;
+            }
             Set<String> owners = jedis.keys(String.format(MEMORY_SET, scope(scopeId), "*"));
             boolean owned = owners.stream().anyMatch(key -> jedis.zscore(key, memoryId) != null);
             if (!owned) {

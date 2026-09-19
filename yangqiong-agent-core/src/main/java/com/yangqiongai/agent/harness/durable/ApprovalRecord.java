@@ -168,4 +168,26 @@ public class ApprovalRecord {
     public long getCreatedAt() {
         return createdAt;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ApprovalRecord that = (ApprovalRecord) o;
+        return createdAt == that.createdAt
+                && java.util.Objects.equals(approvalId, that.approvalId)
+                && java.util.Objects.equals(runId, that.runId)
+                && java.util.Objects.equals(toolCallId, that.toolCallId)
+                && java.util.Objects.equals(toolName, that.toolName)
+                && java.util.Objects.equals(scopeId, that.scopeId)
+                && java.util.Objects.equals(approverId, that.approverId)
+                && state == that.state
+                && java.util.Objects.equals(reason, that.reason);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(approvalId, runId, toolCallId, toolName, scopeId,
+                approverId, state, reason, createdAt);
+    }
 }

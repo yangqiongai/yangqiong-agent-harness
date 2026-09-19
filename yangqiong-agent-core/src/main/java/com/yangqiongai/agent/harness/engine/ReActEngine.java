@@ -36,6 +36,7 @@ import com.yangqiongai.agent.harness.config.TokenBudgetPolicy;
 import com.yangqiongai.agent.harness.model.ModelPricingRegistry;
 import com.yangqiongai.agent.harness.event.EventBus;
 import com.yangqiongai.agent.harness.core.event.AgentEvent;
+import com.yangqiongai.agent.harness.core.trace.ContextSnapshotListener;
 import com.yangqiongai.agent.harness.core.event.AgentEventType;
 import com.yangqiongai.agent.harness.core.event.AgentResultEvent;
 import com.yangqiongai.agent.harness.core.event.ConfirmResult;
@@ -173,6 +174,16 @@ public class ReActEngine extends AbstractAgentLoop {
      */
     public ReActEngine eventBus(EventBus eventBus) {
         setEngineEventBus(eventBus);
+        return this;
+    }
+
+    /**
+     * 注入上下文快照监听器，每次模型调用前回调采集快照
+     * @param contextSnapshotListener
+     * @return
+     */
+    public ReActEngine contextSnapshotListener(ContextSnapshotListener contextSnapshotListener) {
+        setEngineContextSnapshotListener(contextSnapshotListener);
         return this;
     }
 

@@ -404,6 +404,14 @@ public class OpenAIChatProtocolAdapter implements AgentModelProtocolAdapter {
             JsonNode choice = choices.get(0);
             JsonNode delta = choice.get("delta");
             if (delta != null) {
+                // 推理模型思考内容（如deepseek的reasoning_content）
+                JsonNode reasoning = delta.get("reasoning_content");
+                if (reasoning == null || reasoning.isNull()) {
+                    reasoning = delta.get("reasoning");
+                }
+                if (reasoning != null && !reasoning.isNull() && !reasoning.asText().isEmpty()) {
+                    blocks.add(AgentThinkingBlock.builder().thinking(reasoning.asText()).build());
+                }
                 // 文本内容
                 JsonNode content = delta.get("content");
                 if (content != null && !content.isNull() && !content.asText().isEmpty()) {
@@ -467,6 +475,14 @@ public class OpenAIChatProtocolAdapter implements AgentModelProtocolAdapter {
             JsonNode choice = choices.get(0);
             JsonNode message = choice.get("message");
             if (message != null) {
+                // 推理模型思考内容（如deepseek的reasoning_content）
+                JsonNode reasoning = message.get("reasoning_content");
+                if (reasoning == null || reasoning.isNull()) {
+                    reasoning = message.get("reasoning");
+                }
+                if (reasoning != null && !reasoning.isNull() && !reasoning.asText().isEmpty()) {
+                    blocks.add(AgentThinkingBlock.builder().thinking(reasoning.asText()).build());
+                }
                 // 文本内容
                 JsonNode content = message.get("content");
                 if (content != null && !content.isNull() && !content.asText().isEmpty()) {

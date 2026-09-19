@@ -71,6 +71,41 @@ class CronExpressionTest {
     }
 
     @Test
+    void supportsValueStepSyntaxFromZero() {
+        // 单值起点+步长：0/15语义为从0开始每15分钟，即0,15,30,45
+        CronExpression expr = CronExpression.parse("0 0/15 * * * *");
+
+        assertThat(expr.nextFireAfter(at(2026, 1, 1, 10, 7, 0), ZONE))
+                .isEqualTo(at(2026, 1, 1, 10, 15, 0));
+        assertThat(expr.nextFireAfter(at(2026, 1, 1, 10, 15, 0), ZONE))
+                .isEqualTo(at(2026, 1, 1, 10, 30, 0));
+        assertThat(expr.nextFireAfter(at(2026, 1, 1, 10, 45, 0), ZONE))
+                .isEqualTo(at(2026, 1, 1, 11, 0, 0));
+    }
+
+    @Test
+    void supportsValueStepSyntaxWithNonZeroStart() {
+        // 起点非0：30/10语义为30,40,50
+        CronExpression expr = CronExpression.parse("30/10 * * * *");
+
+        assertThat(expr.nextFireAfter(at(2026, 1, 1, 10, 0, 0), ZONE))
+                .isEqualTo(at(2026, 1, 1, 10, 30, 0));
+        assertThat(expr.nextFireAfter(at(2026, 1, 1, 10, 50, 0), ZONE))
+                .isEqualTo(at(2026, 1, 1, 11, 30, 0));
+    }
+
+    @Test
+    void supportsValueStepSyntaxOnSeconds() {
+        // 秒字段单值步长：0/20语义为0,20,40
+        CronExpression expr = CronExpression.parse("0/20 * * * * *");
+
+        assertThat(expr.nextFireAfter(at(2026, 1, 1, 10, 0, 5), ZONE))
+                .isEqualTo(at(2026, 1, 1, 10, 0, 20));
+        assertThat(expr.nextFireAfter(at(2026, 1, 1, 10, 0, 40), ZONE))
+                .isEqualTo(at(2026, 1, 1, 10, 1, 0));
+    }
+
+    @Test
     void supportsRangeSyntax() {
         CronExpression expr = CronExpression.parse("0-30 * * * *");
 

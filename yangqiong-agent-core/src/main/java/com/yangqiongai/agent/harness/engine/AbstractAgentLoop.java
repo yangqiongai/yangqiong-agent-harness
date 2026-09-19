@@ -51,6 +51,8 @@ import com.yangqiongai.agent.harness.core.message.AgentToolUseBlock;
 import com.yangqiongai.agent.harness.core.message.MessageFactory;
 import com.yangqiongai.agent.harness.core.model.AgentChatResponse;
 import com.yangqiongai.agent.harness.core.tool.AgentTool;
+import com.yangqiongai.agent.harness.core.trace.ContextSnapshotListener;
+import com.yangqiongai.agent.harness.model.ContextSnapshot;
 import com.yangqiongai.agent.harness.durable.AgentCheckpoint;
 import com.yangqiongai.agent.harness.event.EventBus;
 import com.yangqiongai.agent.harness.memory.CheckpointManager;
@@ -98,6 +100,11 @@ public abstract class AbstractAgentLoop implements AgentLoop {
     static final String ATTR_COST_BUDGET_WARNED = "harness.costBudgetWarned";
 
     /**
+     * 属性键：种子上下文消息（轨迹分叉场景，与平台侧请求体seedMessages键保持一致）
+     */
+    static final String ATTR_SEED_MESSAGES = "seedMessages";
+
+    /**
      * 属性键：原始输入快照，供审批恢复重放
      */
     static final String ATTR_ORIGINAL_INPUTS = "harness.paradigm.originalInputs";
@@ -141,6 +148,11 @@ public abstract class AbstractAgentLoop implements AgentLoop {
      * 最大连续澄清次数，超过后报错中止，防止模型无限提问
      */
     static final int MAX_CLARIFICATIONS = 3;
+
+    /**
+     * 单条上下文消息内容最大字符数（64KB），超过则截断并置位truncated
+     */
+    static final int CONTEXT_MESSAGE_MAX_CHARS = 65536;
 
     /**
      * 属性键：结构化输出重试次数
@@ -191,6 +203,11 @@ public abstract class AbstractAgentLoop implements AgentLoop {
      * 引擎自有事件监听器注册中心回退实例（可选，非null时所有Agent事件自动广播给监听器）
      */
     protected volatile EventBus engineEventBus;
+
+    /**
+     * 引擎自有上下文快照监听器回退实例（可选，非null时每次模型调用前回调采集快照）
+     */
+    protected volatile ContextSnapshotListener engineContextSnapshotListener;
 
     /**
      * 引擎自有审批协调器回退实例（可选，非null时统一审批分拣与toolCallId精确匹配）
@@ -244,6 +261,8 @@ public abstract class AbstractAgentLoop implements AgentLoop {
             context.getRuntimeContext().put(ATTR_ORIGINAL_INPUTS, inputs);
         }
         List<AgentMessage> messages = new ArrayList<>(inputs);
+        // 种子上下文并入初始历史（轨迹分叉场景，位于本次用户输入之前）
+        messages.addAll(0, resolveSeedMessages(context));
         String systemPrompt = context.getSystemPrompt();
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
             systemPrompt = middlewareChain(context).applyOnSystemPrompt(systemPrompt, context.getRuntimeContext());
@@ -258,6 +277,94 @@ public abstract class AbstractAgentLoop implements AgentLoop {
             })
             .concatWith(Flux.defer(() -> Flux.just(AgentEvent.of(AgentEventType.AGENT_END, context.getAgentName()))));
         return finishPipeline(pipeline, context);
+    }
+
+    /**
+     * 解析运行时上下文中的种子消息并转换为引擎消息
+     * <p>
+     * 读取运行时上下文属性seedMessages（元素{role,content}），转换为引擎内部消息列表。
+     * role=system的条目跳过（引擎自行组装系统提示）；tool条目降级为user角色文本；
+     * 单条转换异常时跳过该条并记录warn，不影响其余种子与主流程。
+     * </p>
+     * @param context
+     * @return
+     */
+    private List<AgentMessage> resolveSeedMessages(EngineContext context) {
+        if (context.getRuntimeContext() == null) {
+            return List.of();
+        }
+        Object value = context.getRuntimeContext().get(ATTR_SEED_MESSAGES);
+        if (!(value instanceof List<?> list) || list.isEmpty()) {
+            return List.of();
+        }
+        List<AgentMessage> seeds = new ArrayList<>(list.size());
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> map)) {
+                continue;
+            }
+            try {
+                AgentMessage message = convertSeedMessage(map);
+                if (message != null) {
+                    seeds.add(message);
+                }
+            } catch (Exception e) {
+                log.warn("种子消息转换失败, 跳过该条: {}", e.getMessage());
+            }
+        }
+        return seeds;
+    }
+
+    /**
+     * 转换单条种子消息为引擎消息
+     * <p>
+     * assistant条目转换为ASSISTANT角色，user及其他角色转换为USER角色，
+     * tool条目降级为USER角色并附[工具结果]前缀，system条目返回null跳过。
+     * content为空时返回null跳过。
+     * </p>
+     * @param map 种子消息原始映射{role,content}
+     * @return 引擎消息，无需并入时返回null
+     */
+    private AgentMessage convertSeedMessage(Map<?, ?> map) {
+        String role = map.get("role") instanceof String s ? s.trim().toLowerCase() : "";
+        String content = extractSeedText(map.get("content"));
+        if (content == null || content.isBlank()) {
+            return null;
+        }
+        if ("system".equals(role)) {
+            // 引擎自行组装系统提示，种子中的system条目跳过
+            return null;
+        }
+        String text = "tool".equals(role) ? "[工具结果]" + content : content;
+        AgentMessageRole messageRole = "assistant".equals(role)
+                ? AgentMessageRole.ASSISTANT : AgentMessageRole.USER;
+        return AgentMessage.builder()
+                .role(messageRole)
+                .content(List.of(AgentTextBlock.builder().text(text).build()))
+                .build();
+    }
+
+    /**
+     * 从种子消息content字段提取文本
+     * <p>
+     * 兼容字符串与内容块数组两种形式，数组时按顺序拼接各元素的text字段。
+     * </p>
+     * @param content
+     * @return 提取文本，无法提取时返回null
+     */
+    private String extractSeedText(Object content) {
+        if (content instanceof String text) {
+            return text;
+        }
+        if (content instanceof List<?> blocks) {
+            StringBuilder sb = new StringBuilder();
+            for (Object block : blocks) {
+                if (block instanceof Map<?, ?> blockMap && blockMap.get("text") instanceof String text) {
+                    sb.append(text);
+                }
+            }
+            return sb.isEmpty() ? null : sb.toString();
+        }
+        return null;
     }
 
     /**
@@ -398,6 +505,8 @@ public abstract class AbstractAgentLoop implements AgentLoop {
         return middlewareChain(context)
             .applyOnReasoning(context.getRuntimeContext(), new ArrayList<>(messages),
                 reasoningInput -> {
+                    // 模型调用前采集上下文快照（监听器缺省时零开销，回调异常不影响主流程）
+                    fireContextSnapshot(context, reasoningInput, caller.modelName());
                     // 累积流式分片，concatMap 串行执行保证安全
                     List<AgentChatResponse> accumulated = new ArrayList<>();
                     return Flux.just(AgentEvent.of(AgentEventType.MODEL_CALL_START,
@@ -449,6 +558,29 @@ public abstract class AbstractAgentLoop implements AgentLoop {
                     applyOnError(context, error, "reasoning");
                     return Flux.just(AgentEvent.of(AgentEventType.ERROR, error), AgentEvent.completed());
                 });
+    }
+
+    /**
+     * 模型调用前采集上下文快照并回调监听器
+     * <p>
+     * 监听器缺省时直接返回（零开销），组装与回调的任何异常均吞掉仅记warn，绝不影响主流程。
+     * </p>
+     * @param context
+     * @param messages 本次调用组装好的上下文消息
+     * @param modelName 本次调用的模型名称
+     */
+    private void fireContextSnapshot(EngineContext context, List<AgentMessage> messages, String modelName) {
+        ContextSnapshotListener listener = contextSnapshotListener(context);
+        if (listener == null) {
+            return;
+        }
+        try {
+            ContextSnapshot snapshot = ContextSnapshotAssembler.build(context, messages, modelName,
+                    context.nextModelCallSeq(), CONTEXT_MESSAGE_MAX_CHARS);
+            listener.onSnapshot(snapshot);
+        } catch (Exception e) {
+            log.warn("上下文快照采集回调异常，已忽略: agent={}", context.getAgentName(), e);
+        }
     }
 
     /**
@@ -1493,6 +1625,16 @@ public abstract class AbstractAgentLoop implements AgentLoop {
     }
 
     /**
+     * 解析上下文快照监听器，优先取引擎上下文暴露的组件，未暴露时回退引擎自有实例
+     * @param context
+     * @return
+     */
+    protected ContextSnapshotListener contextSnapshotListener(EngineContext context) {
+        ContextSnapshotListener listener = context.getContextSnapshotListener();
+        return listener != null ? listener : engineContextSnapshotListener;
+    }
+
+    /**
      * 解析模型调用器，优先取引擎上下文暴露的组件，未暴露时回退引擎自有实例
      * @param context
      * @return
@@ -1655,6 +1797,14 @@ public abstract class AbstractAgentLoop implements AgentLoop {
      */
     protected void setEngineEventBus(EventBus engineEventBus) {
         this.engineEventBus = engineEventBus;
+    }
+
+    /**
+     * 注入引擎自有上下文快照监听器回退实例
+     * @param engineContextSnapshotListener
+     */
+    protected void setEngineContextSnapshotListener(ContextSnapshotListener engineContextSnapshotListener) {
+        this.engineContextSnapshotListener = engineContextSnapshotListener;
     }
 
     /**

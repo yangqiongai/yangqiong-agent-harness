@@ -31,6 +31,7 @@ import com.yangqiongai.agent.harness.tool.ToolFilter;
 import com.yangqiongai.agent.harness.tool.ToolLoadingState;
 import com.yangqiongai.agent.harness.core.HarnessAgentRuntimeBuilder;
 import com.yangqiongai.agent.harness.core.model.AgentGenerateOptions;
+import com.yangqiongai.agent.harness.core.trace.ContextSnapshotListener;
 
 /**
  * 引擎配置
@@ -167,6 +168,11 @@ public class EngineConfig {
      * 事件监听器注册中心（可选，构建时注入，为空时不广播事件）
      */
     private EventBus eventBus;
+
+    /**
+     * 上下文快照监听器（可选，构建时注入，为空时引擎完全跳过快照采集）
+     */
+    private ContextSnapshotListener contextSnapshotListener;
 
     /**
      * 模型定价注册表（可选，构建时注入，为空时按默认价0计价）
@@ -519,6 +525,24 @@ public class EngineConfig {
     }
 
     /**
+     * 注入上下文快照监听器
+     * @param contextSnapshotListener
+     * @return
+     */
+    public EngineConfig contextSnapshotListener(ContextSnapshotListener contextSnapshotListener) {
+        this.contextSnapshotListener = contextSnapshotListener;
+        return this;
+    }
+
+    /**
+     * 获取上下文快照监听器
+     * @return
+     */
+    public ContextSnapshotListener getContextSnapshotListener() {
+        return contextSnapshotListener;
+    }
+
+    /**
      * 获取模型定价注册表
      * @return
      */
@@ -610,6 +634,7 @@ public class EngineConfig {
         ctx.setTokenBudgetPolicy(tokenBudgetPolicy);
         ctx.setCostBudgetPolicy(costBudgetPolicy);
         ctx.setEventBus(eventBus);
+        ctx.setContextSnapshotListener(contextSnapshotListener);
         ctx.setModelPricingRegistry(modelPricingRegistry);
         ctx.setModelCode(modelCode);
         ctx.setDurableTracker(durableTracker);
