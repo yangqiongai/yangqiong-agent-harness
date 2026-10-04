@@ -34,7 +34,7 @@ public class ToolCatalogPromptInjector implements AgentMiddleware {
     /**
      * 目录标题与使用说明
      */
-    private static final String CATALOG_HEADER = "## 可用工具目录\n"
+    private static final String CATALOG_HEADER = "# 可用工具目录\n\n"
             + "以下工具未随本次请求下发完整定义，需要使用时先调用 load_tool 启用：";
 
     /**
@@ -75,8 +75,8 @@ public class ToolCatalogPromptInjector implements AgentMiddleware {
             return systemPrompt;
         }
         String base = systemPrompt == null ? "" : systemPrompt;
-        if (!base.isEmpty() && !base.endsWith("\n")) {
-            base = base + "\n\n";
+        if (!base.isEmpty() && !base.endsWith("\n\n")) {
+            base = base + (base.endsWith("\n") ? "\n" : "\n\n");
         }
         return base + catalog;
     }

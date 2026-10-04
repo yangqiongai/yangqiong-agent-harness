@@ -85,6 +85,16 @@ class SkillPromptInjectorTest {
         assertTrue(result.contains("test"));
     }
 
+    @Test
+    void shouldSkipWhenSkillSectionAlreadyInjected() {
+        AgentSkill skill = new AgentSkill("test", "BUILTIN", "Test", Map.of());
+        SkillManager manager = new SkillManager(createSkillBox(List.of(skill)));
+        SkillPromptInjector injector = new SkillPromptInjector(manager);
+
+        String base = "You are an assistant\n\n# 可用技能\n\n- other: 其他技能";
+        assertEquals(base, injector.onSystemPrompt(base, AgentRuntimeContext.empty()));
+    }
+
     private AgentSkillBox createSkillBox(List<AgentSkill> skills) {
         return new AgentSkillBox() {
             private final List<AgentSkill> list = new ArrayList<>(skills);

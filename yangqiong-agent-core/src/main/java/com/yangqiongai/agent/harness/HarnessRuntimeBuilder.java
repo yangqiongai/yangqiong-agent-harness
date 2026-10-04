@@ -2048,7 +2048,16 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
             harnessToolkit.addTool(fileToolkit.listTool());
         }
 
-        List<AgentMiddleware> allMiddlewares = new ArrayList<>(middlewares);
+        // 调用方中间件拆分：尾部注入组延后到内置注入器之后，业务上下文贴近用户消息
+        List<AgentMiddleware> allMiddlewares = new ArrayList<>();
+        List<AgentMiddleware> tailMiddlewares = new ArrayList<>();
+        for (AgentMiddleware middleware : middlewares) {
+            if (middleware.isTailInjection()) {
+                tailMiddlewares.add(middleware);
+            } else {
+                allMiddlewares.add(middleware);
+            }
+        }
 
         // SPI自动发现的中间件接入链底
         if (autoExtensions != null) {
@@ -2192,6 +2201,9 @@ public class HarnessRuntimeBuilder implements RuntimeCapabilityAccessor {
             log.info("工具渐进加载已启用: 常驻工具{}个, 延迟池{}个", progressiveState.getAlwaysOnTools().size(),
                     harnessToolkit.getTools().size() - progressiveState.getAlwaysOnTools().size());
         }
+
+        // 尾部注入组置于内置注入器（技能摘要、工具目录）之后，业务上下文占据提示词末尾
+        allMiddlewares.addAll(tailMiddlewares);
 
         MiddlewareChain middlewareChain = new MiddlewareChain(allMiddlewares);
 

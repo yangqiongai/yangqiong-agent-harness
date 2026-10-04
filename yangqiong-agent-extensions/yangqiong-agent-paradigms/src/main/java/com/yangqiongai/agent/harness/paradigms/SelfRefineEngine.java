@@ -17,14 +17,16 @@ package com.yangqiongai.agent.harness.paradigms;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.yangqiongai.agent.harness.core.event.AgentEvent;
 import com.yangqiongai.agent.harness.core.event.AgentEventType;
 import com.yangqiongai.agent.harness.core.event.AgentResultEvent;
+import com.yangqiongai.agent.harness.core.event.ParadigmStageInfo;
 import com.yangqiongai.agent.harness.core.message.AgentContentBlock;
 import com.yangqiongai.agent.harness.core.message.AgentMessage;
 import com.yangqiongai.agent.harness.core.message.AgentMessageRole;
@@ -52,14 +54,16 @@ import reactor.core.publisher.Flux;
 public class SelfRefineEngine extends AbstractAgentLoop {
 
     /**
-     * 批评通过标记，批评文本含此标记且不含UNSATISFIED时表示当前稿无需修订
+     * 批评通过标记行匹配（忽略大小写，整行仅SATISFIED），避免含SATISFIED子串的普通词汇误判
      */
-    private static final String SATISFIED_MARKER = "SATISFIED";
+    private static final Pattern SATISFIED_LINE_PATTERN =
+            Pattern.compile("(?im)^\\s*SATISFIED\\s*$");
 
     /**
-     * 批评修订标记，批评文本含此标记表示需要按后续意见修订
+     * 批评修订标记行匹配（忽略大小写，行首UNSATISFIED）
      */
-    private static final String UNSATISFIED_MARKER = "UNSATISFIED";
+    private static final Pattern UNSATISFIED_LINE_PATTERN =
+            Pattern.compile("(?im)^\\s*UNSATISFIED\\b");
 
     /**
      * 范式配置
@@ -109,21 +113,23 @@ public class SelfRefineEngine extends AbstractAgentLoop {
     /**
      * 发起一次模型调用，经父类助手发射MODEL_CALL_START/END事件并把合并响应写入responseRef
      * <p>
-     * 单次模型调用流以父类withIterationTimeout包裹，空闲超过单轮迭代超时时中断并发射ERROR。
+     * 单次模型调用流以父类withIterationTimeout包裹，空闲超过单轮迭代超时时中断并发射ERROR；
+     * suppressDeltas为true时抑制增量分片事件，供批评与修订等内部调用使用。
      * </p>
      * @param messages
      * @param toolSchemas
      * @param context
      * @param callSeq
+     * @param suppressDeltas 是否抑制增量分片事件
      * @param responseRef
      * @return
      */
     private Flux<AgentEvent> callModel(List<AgentMessage> messages, List<Map<String, Object>> toolSchemas,
-                                       EngineContext context, AtomicInteger callSeq,
+                                       EngineContext context, AtomicInteger callSeq, boolean suppressDeltas,
                                        AtomicReference<AgentChatResponse> responseRef) {
         // 单轮迭代超时包裹单次模型调用流
         return withIterationTimeout(context, withModelCallEvents(context, messages, toolSchemas,
-                callSeq.incrementAndGet(), response -> {
+                callSeq.incrementAndGet(), suppressDeltas, response -> {
                     responseRef.set(response);
                     return Flux.empty();
                 }));
@@ -146,7 +152,10 @@ public class SelfRefineEngine extends AbstractAgentLoop {
         List<AgentMessage> critiqueMessages = new ArrayList<>(conversation);
         critiqueMessages.add(MessageFactory.createUserMessage(
                 buildCritiquePrompt(question, messageText(draftRef.get()))));
-        return callModel(critiqueMessages, List.of(), context, callSeq, critiqueRef)
+        // 批评为内部调用，抑制增量分片避免审稿意见混入用户答案流
+        return Flux.just(AgentEvent.of(AgentEventType.PARADIGM_STAGE,
+                        new ParadigmStageInfo(ParadigmStageInfo.CRITIQUE, refinements)))
+                .concatWith(callModel(critiqueMessages, List.of(), context, callSeq, true, critiqueRef))
                 .concatWith(Flux.defer(() -> {
                     String critique = textOf(critiqueRef.get());
                     if (isSatisfied(critique) || refinements >= options.getMaxRefinements()) {
@@ -158,7 +167,10 @@ public class SelfRefineEngine extends AbstractAgentLoop {
                     reviseMessages.add(MessageFactory.createUserMessage(
                             buildRevisePrompt(question, messageText(draftRef.get()),
                                     extractFeedback(critique))));
-                    return callModel(reviseMessages, List.of(), context, callSeq, reviseRef)
+                    // 修订为内部调用，抑制增量分片避免修订过程文本混入用户答案流
+                    return Flux.just(AgentEvent.of(AgentEventType.PARADIGM_STAGE,
+                                    new ParadigmStageInfo(ParadigmStageInfo.REVISE, refinements)))
+                            .concatWith(callModel(reviseMessages, List.of(), context, callSeq, true, reviseRef))
                             .concatWith(Flux.defer(() -> {
                                 AgentMessage revised =
                                         context.getResponseParser().parseToMessage(reviseRef.get());
@@ -189,7 +201,7 @@ public class SelfRefineEngine extends AbstractAgentLoop {
             return Flux.empty();
         }
         AtomicReference<AgentChatResponse> responseRef = new AtomicReference<>();
-        return callModel(messages, context.getAllToolSchemas(), context, callSeq, responseRef)
+        return callModel(messages, context.getAllToolSchemas(), context, callSeq, false, responseRef)
                 .concatWith(Flux.defer(() -> {
                     AgentChatResponse response = responseRef.get();
                     ModelResponseParser parser = context.getResponseParser();
@@ -268,14 +280,14 @@ public class SelfRefineEngine extends AbstractAgentLoop {
     }
 
     /**
-     * 构造批评提示词，要求输出SATISFIED或以UNSATISFIED开头附具体修订建议
+     * 构造批评提示词，要求第一行只输出SATISFIED或以UNSATISFIED开头附具体修订建议
      * @param question
      * @param draft
      * @return
      */
     private String buildCritiquePrompt(String question, String draft) {
         return "你是一名严格的审稿人，请审阅下面针对原始问题给出的回答草稿。\n"
-                + "若草稿已足够好、无需修改，请输出：SATISFIED\n"
+                + "若草稿已足够好、无需修改，第一行只输出：SATISFIED\n"
                 + "否则请以 UNSATISFIED 开头，输出具体的修订建议。\n"
                 + "原始问题：\n" + question + "\n\n"
                 + "回答草稿：\n" + draft;
@@ -296,7 +308,7 @@ public class SelfRefineEngine extends AbstractAgentLoop {
     }
 
     /**
-     * 判断批评文本是否满意，文本含SATISFIED且不含UNSATISFIED即视为满意，忽略大小写
+     * 判断批评文本是否满意，行首标记匹配（整行仅SATISFIED且无UNSATISFIED行），忽略大小写
      * @param critique
      * @return
      */
@@ -304,12 +316,12 @@ public class SelfRefineEngine extends AbstractAgentLoop {
         if (critique == null || critique.isBlank()) {
             return false;
         }
-        String normalized = critique.toUpperCase(Locale.ROOT);
-        return normalized.contains(SATISFIED_MARKER) && !normalized.contains(UNSATISFIED_MARKER);
+        return SATISFIED_LINE_PATTERN.matcher(critique).find()
+                && !UNSATISFIED_LINE_PATTERN.matcher(critique).find();
     }
 
     /**
-     * 提取修订意见：剥离前导UNSATISFIED标记与其后的分隔符号，其余原文返回
+     * 提取修订意见：剥离开头行首UNSATISFIED标记与其后的分隔符号，其余原文返回
      * @param critique
      * @return
      */
@@ -318,8 +330,10 @@ public class SelfRefineEngine extends AbstractAgentLoop {
             return "";
         }
         String trimmed = critique.trim();
-        if (trimmed.toUpperCase(Locale.ROOT).startsWith(UNSATISFIED_MARKER)) {
-            return trimmed.substring(UNSATISFIED_MARKER.length())
+        Matcher matcher = UNSATISFIED_LINE_PATTERN.matcher(trimmed);
+        // 仅当标记位于文本开头时剥离
+        if (matcher.find() && matcher.start() == 0) {
+            return trimmed.substring(matcher.end())
                     .replaceFirst("^[\\s:：-]+", "").trim();
         }
         return trimmed;

@@ -13,53 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yangqiongai.agent.harness.core.event;
+package com.yangqiongai.agent.harness.store.jdbc;
 
 /**
- * Agent事件类型
+ * 共享存储JDBC实体归一工具
  * @author yangqiong
  */
-public enum AgentEventType {
+public final class JdbcStoreSupport {
 
-    TEXT_BLOCK_DELTA,
+    private JdbcStoreSupport() {
+    }
 
-    THINKING_BLOCK_DELTA,
-
-    TOOL_CALL_DELTA,
-
-    AGENT_START,
-
-    AGENT_END,
-
-    MODEL_CALL_START,
-
-    MODEL_CALL_END,
-
-    TOOL_CALL_START,
-
-    TOOL_CALL_END,
-
-    AGENT_RESULT,
-
-    ENGINE_ROUTED,
-
-    PARADIGM_STAGE,
-
-    REQUIRE_USER_CONFIRM,
-
-    REQUIRE_USER_CLARIFICATION,
-
-    INTERRUPTED,
-
-    COMPLETED,
-
-    TOKEN_BUDGET_WARN,
-
-    TOKEN_BUDGET_EXCEEDED,
-
-    COST_BUDGET_WARN,
-
-    COST_BUDGET_EXCEEDED,
-
-    ERROR
+    /**
+     * 空值归一为""以适配非空列，系统级无归属数据落入空串桶不参与scope过滤
+     * @param value
+     * @return
+     */
+    public static String normalize(String value) {
+        return value != null ? value : "";
+    }
 }

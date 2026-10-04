@@ -45,6 +45,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Comparator;
+import java.util.Map;
 
 /**
  * 工具执行器
@@ -53,6 +54,11 @@ import java.util.Comparator;
 public class ToolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(ToolExecutor.class);
+
+    /**
+     * 审批台账上下文键（与AbstractAgentLoop的harness.paradigm.approvalLedger对齐）
+     */
+    private static final String ATTR_APPROVAL_LEDGER = "harness.paradigm.approvalLedger";
 
     /**
      * 审计摘要最大字符数（防敏感内容与大结果入库）
@@ -188,8 +194,17 @@ public class ToolExecutor {
             return Mono.just(MessageFactory.createToolMessage(errorResult));
         }
 
-        // 权限判定：统一策略门优先（收敛唯一出口并留审计，携带入参供AI审批等精细判定），未注入时回退既有三段判定
-        if (policyGate != null) {
+        // 审批台账感知：人工确认重放时已批准的调用豁免全部权限判定（策略门与权限引擎均不再二次ASK，否则会以"等待人工确认"卡死），已拒绝的直接占位错误
+        Boolean ledgerDecision = approvalLedgerDecision(context, toolUse.getToolUseId(), toolName);
+        if (Boolean.FALSE.equals(ledgerDecision)) {
+            AgentToolResultBlock errorResult = AgentToolResultBlock.error(
+                    toolUse.getToolUseId(), "人工拒绝: " + toolName);
+            return Mono.just(MessageFactory.createToolMessage(errorResult));
+        }
+
+        // 权限判定：无台账记录时执行（统一策略门优先并留审计，携带入参供AI审批等精细判定），未注入时回退既有三段判定
+        if (ledgerDecision == null) {
+            if (policyGate != null) {
             AgentPermissionDecision decision = policyGate.evaluate(toolName, toolUse.getToolUseId(),
                     context != null ? context.getScopeId() : null, currentRunId(context), toolUse.getInput());
             if (decision == AgentPermissionDecision.DENY) {
@@ -203,29 +218,30 @@ public class ToolExecutor {
                 return Mono.just(MessageFactory.createToolMessage(pendingResult));
             }
         } else {
-            if (permissionEngine != null) {
-                AgentPermissionDecision decision = permissionEngine.evaluate(toolName, tool);
-                if (decision == AgentPermissionDecision.DENY) {
+                if (permissionEngine != null) {
+                    AgentPermissionDecision decision = permissionEngine.evaluate(toolName, tool);
+                    if (decision == AgentPermissionDecision.DENY) {
+                        AgentToolResultBlock errorResult = AgentToolResultBlock.error(
+                                toolUse.getToolUseId(), "权限拒绝: " + toolName);
+                        return Mono.just(MessageFactory.createToolMessage(errorResult));
+                    }
+                    if (decision == AgentPermissionDecision.ASK) {
+                        AgentToolResultBlock pendingResult = AgentToolResultBlock.error(
+                                toolUse.getToolUseId(), "等待人工确认: " + toolName);
+                        return Mono.just(MessageFactory.createToolMessage(pendingResult));
+                    }
+                }
+
+                if (deniedTools != null && deniedTools.contains(toolName)) {
                     AgentToolResultBlock errorResult = AgentToolResultBlock.error(
-                            toolUse.getToolUseId(), "权限拒绝: " + toolName);
+                            toolUse.getToolUseId(), "工具被黑名单禁止: " + toolName);
                     return Mono.just(MessageFactory.createToolMessage(errorResult));
                 }
-                if (decision == AgentPermissionDecision.ASK) {
-                    AgentToolResultBlock pendingResult = AgentToolResultBlock.error(
-                            toolUse.getToolUseId(), "等待人工确认: " + toolName);
-                    return Mono.just(MessageFactory.createToolMessage(pendingResult));
+                if (allowedTools != null && !allowedTools.isEmpty() && !allowedTools.contains(toolName)) {
+                    AgentToolResultBlock errorResult = AgentToolResultBlock.error(
+                            toolUse.getToolUseId(), "工具不在白名单中: " + toolName);
+                    return Mono.just(MessageFactory.createToolMessage(errorResult));
                 }
-            }
-
-            if (deniedTools != null && deniedTools.contains(toolName)) {
-                AgentToolResultBlock errorResult = AgentToolResultBlock.error(
-                        toolUse.getToolUseId(), "工具被黑名单禁止: " + toolName);
-                return Mono.just(MessageFactory.createToolMessage(errorResult));
-            }
-            if (allowedTools != null && !allowedTools.isEmpty() && !allowedTools.contains(toolName)) {
-                AgentToolResultBlock errorResult = AgentToolResultBlock.error(
-                        toolUse.getToolUseId(), "工具不在白名单中: " + toolName);
-                return Mono.just(MessageFactory.createToolMessage(errorResult));
             }
         }
 
@@ -399,6 +415,36 @@ public class ToolExecutor {
         Object runId = context != null
                 ? context.get(DurableExecutionTracker.ATTR_RUN_ID) : null;
         return runId != null ? runId.toString() : null;
+    }
+
+    /**
+     * 读取审批台账决策（与AbstractAgentLoop的triage查询逻辑对齐：调用ID优先，工具名兜底，
+     * 重放/重新生成的调用ID可能变化而工具名稳定）
+     * @param context
+     * @param toolCallId
+     * @param toolName
+     * @return 无台账记录返回null
+     */
+    private Boolean approvalLedgerDecision(AgentRuntimeContext context, String toolCallId, String toolName) {
+        if (context == null) {
+            return null;
+        }
+        Object ledger = context.get(ATTR_APPROVAL_LEDGER);
+        if (ledger instanceof Map<?, ?> map) {
+            if (toolCallId != null) {
+                Object decision = map.get(toolCallId);
+                if (decision instanceof Boolean b) {
+                    return b;
+                }
+            }
+            if (toolName != null) {
+                Object decision = map.get(toolName);
+                if (decision instanceof Boolean b) {
+                    return b;
+                }
+            }
+        }
+        return null;
     }
 
     /**

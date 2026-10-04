@@ -98,8 +98,8 @@ public class JdbcCheckpointStore implements CheckpointStore {
     private CheckpointEntity toEntity(AgentCheckpoint checkpoint) {
         CheckpointEntity entity = new CheckpointEntity();
         entity.setRunId(checkpoint.getRunId());
-        entity.setScopeId(checkpoint.getScopeId());
-        entity.setSessionId(checkpoint.getSessionId());
+        entity.setScopeId(JdbcStoreSupport.normalize(checkpoint.getScopeId()));
+        entity.setSessionId(JdbcStoreSupport.normalize(checkpoint.getSessionId()));
         entity.setVersion(checkpoint.getVersion());
         entity.setIteration(checkpoint.getIteration());
         entity.setMessages(AgentMessageSerializerUtil.messagesToJson(checkpoint.getMessages()));

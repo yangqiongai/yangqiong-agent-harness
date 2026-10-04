@@ -55,7 +55,7 @@ public class AskUserTool implements AgentTool {
      */
     @Override
     public String getDescription() {
-        return "在任务执行中途向用户提出澄清问题。仅当任务关键信息缺失、无法继续时使用，引擎会暂停等待用户答复。";
+        return "在任务执行中途向用户提出澄清问题。当关键信息缺失或存在多种可能需要用户拍板时（如文件命名、数量、范围、方案选择等歧义），必须主动使用本工具提问，用户界面会弹出澄清卡片等待答复；不要用纯文本提问代替本工具。存在候选选项时通过options参数传入选项列表，界面会渲染为可点击的选择按钮。";
     }
 
     /**
@@ -74,13 +74,21 @@ public class AskUserTool implements AgentTool {
         questionProp.put("description", "向用户提出的澄清问题");
         properties.put("question", questionProp);
 
+        Map<String, Object> optionsProp = new LinkedHashMap<>();
+        optionsProp.put("type", "array");
+        optionsProp.put("description", "候选选项列表（存在明确候选项时提供，如[\"20位\",\"50位\",\"100位\"]），用户界面渲染为可点击按钮");
+        Map<String, Object> itemsProp = new LinkedHashMap<>();
+        itemsProp.put("type", "string");
+        optionsProp.put("items", itemsProp);
+        properties.put("options", optionsProp);
+
         schema.put("properties", properties);
         schema.put("required", List.of("question"));
         return schema;
     }
 
     /**
-     * 执行提问，返回带澄清标记的结果块
+     * 执行提问，返回带澄清标记的结果块（携带结构化候选选项）
      * @param param
      * @return
      */
@@ -94,6 +102,24 @@ public class AskUserTool implements AgentTool {
         if (questionObj == null || questionObj.toString().isBlank()) {
             return Mono.just(AgentToolResultBlock.error("question 参数缺失"));
         }
-        return Mono.just(AgentToolResultBlock.clarification(questionObj.toString()));
+        return Mono.just(AgentToolResultBlock.clarification(questionObj.toString(), extractOptions(input.get("options"))));
+    }
+
+    /**
+     * 提取候选选项列表，非法输入返回null
+     * @param optionsObj
+     * @return
+     */
+    private java.util.List<String> extractOptions(Object optionsObj) {
+        if (!(optionsObj instanceof List<?> list) || list.isEmpty()) {
+            return null;
+        }
+        java.util.List<String> options = new java.util.ArrayList<>();
+        for (Object item : list) {
+            if (item != null && !item.toString().isBlank()) {
+                options.add(item.toString().trim());
+            }
+        }
+        return options.isEmpty() ? null : options;
     }
 }

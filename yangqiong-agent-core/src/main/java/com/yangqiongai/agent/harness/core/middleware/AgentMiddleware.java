@@ -32,6 +32,18 @@ import java.util.Map;
 public interface AgentMiddleware extends AgentReactiveMiddleware {
 
     /**
+     * 是否尾部注入型中间件
+     * <p>
+     * 标记为true的调用方中间件将追加到内置注入器（技能摘要、工具目录）之后执行，
+     * 使其注入的业务上下文（如运行记忆）位于系统提示词末尾，贴近用户消息获得更强注意力。
+     * </p>
+     * @return
+     */
+    default boolean isTailInjection() {
+        return false;
+    }
+
+    /**
      * 系统提示词处理钩子，返回可能修改后的提示词
      * @param systemPrompt
      * @param context

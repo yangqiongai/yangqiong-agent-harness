@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.yangqiongai.agent.harness.core.event.AgentEvent;
 import com.yangqiongai.agent.harness.core.event.AgentEventType;
 import com.yangqiongai.agent.harness.core.event.AgentResultEvent;
+import com.yangqiongai.agent.harness.core.event.AgentTextBlockDeltaEvent;
+import com.yangqiongai.agent.harness.core.event.ParadigmStageInfo;
 import com.yangqiongai.agent.harness.core.message.AgentMessage;
 import com.yangqiongai.agent.harness.core.message.AgentTextBlock;
 import com.yangqiongai.agent.harness.core.message.AgentToolResultBlock;
@@ -233,5 +235,95 @@ class SelfRefineEngineTest {
         assertThat(types.get(types.size() - 1)).isEqualTo(AgentEventType.AGENT_END);
         assertThat(events.get(events.size() - 2)).isInstanceOf(AgentResultEvent.class);
         assertThat(types).doesNotContain(AgentEventType.ERROR);
+    }
+
+    /**
+     * 内部调用流式抑制：批评与修订文本不得作为TEXT_BLOCK_DELTA发射，初稿仍正常流式，
+     * 修订稿以最终结果事件呈现不产生分片
+     */
+    @Test
+    void shouldNotEmitCritiqueAndReviseTextDeltas() {
+        stubResponses(
+                textResponse("初稿答案"),
+                textResponse("UNSATISFIED: 建议补充数据来源"),
+                textResponse("修订稿答案"),
+                textResponse("SATISFIED"));
+
+        SelfRefineEngine engine = new SelfRefineEngine();
+        List<AgentEvent> events = engine.run(
+                List.of(MessageFactory.createUserMessage("请回答问题")), context)
+                .collectList().block();
+
+        assertThat(events).isNotNull();
+        List<String> deltaTexts = events.stream()
+                .filter(event -> event.getType() == AgentEventType.TEXT_BLOCK_DELTA)
+                .map(event -> ((AgentTextBlockDeltaEvent) event).getDelta())
+                .toList();
+        assertThat(deltaTexts).anyMatch(text -> text.contains("初稿答案"));
+        assertThat(deltaTexts).noneMatch(text -> text.contains("UNSATISFIED")
+                || text.contains("建议补充数据来源")
+                || text.contains("修订稿答案"));
+        // 修订稿经结果事件完整呈现
+        AgentEvent resultEvent = events.get(events.size() - 2);
+        assertThat(resultEvent).isInstanceOf(AgentResultEvent.class);
+        assertThat(((AgentResultEvent) resultEvent).getResult().getTextContent())
+                .isEqualTo("修订稿答案");
+    }
+
+    /**
+     * 标记判定加固：批评文本含SATISFIED子串但不构成独立SATISFIED行时判为需修订
+     */
+    @Test
+    void shouldTreatSatisfiedSubstringAsUnsatisfied() {
+        stubResponses(
+                textResponse("初稿答案"),
+                textResponse("整体尚可，属于SATISFIED范畴但需微调"),
+                textResponse("修订稿答案"),
+                textResponse("SATISFIED"));
+
+        SelfRefineEngine engine = new SelfRefineEngine();
+        List<AgentEvent> events = engine.run(
+                List.of(MessageFactory.createUserMessage("请回答问题")), context)
+                .collectList().block();
+
+        assertThat(events).isNotNull();
+        AgentEvent resultEvent = events.get(events.size() - 2);
+        assertThat(resultEvent).isInstanceOf(AgentResultEvent.class);
+        assertThat(((AgentResultEvent) resultEvent).getResult().getTextContent())
+                .isEqualTo("修订稿答案");
+        // 首次批评被正确判为需修订：初稿、批评、修订、再批评共4次模型调用
+        assertThat(recordedMessages).hasSize(4);
+        assertThat(recordedMessages.get(2))
+                .anyMatch(msg -> msg.getTextContent().contains("SATISFIED范畴但需微调"));
+    }
+
+    /**
+     * 阶段事件：批评与修订阶段各发射PARADIGM_STAGE事件，轮次随修订递增
+     */
+    @Test
+    void shouldEmitCritiqueAndReviseStageEvents() {
+        stubResponses(
+                textResponse("初稿答案"),
+                textResponse("UNSATISFIED: 建议补充数据来源"),
+                textResponse("修订稿答案"),
+                textResponse("SATISFIED"));
+
+        SelfRefineEngine engine = new SelfRefineEngine();
+        List<AgentEvent> events = engine.run(
+                List.of(MessageFactory.createUserMessage("请回答问题")), context)
+                .collectList().block();
+
+        assertThat(events).isNotNull();
+        List<ParadigmStageInfo> stages = events.stream()
+                .filter(event -> event.getType() == AgentEventType.PARADIGM_STAGE)
+                .map(event -> (ParadigmStageInfo) event.getPayload())
+                .toList();
+        assertThat(stages).hasSize(3);
+        assertThat(stages.get(0).getStage()).isEqualTo(ParadigmStageInfo.CRITIQUE);
+        assertThat(stages.get(0).getAttempt()).isZero();
+        assertThat(stages.get(1).getStage()).isEqualTo(ParadigmStageInfo.REVISE);
+        assertThat(stages.get(1).getAttempt()).isZero();
+        assertThat(stages.get(2).getStage()).isEqualTo(ParadigmStageInfo.CRITIQUE);
+        assertThat(stages.get(2).getAttempt()).isEqualTo(1);
     }
 }

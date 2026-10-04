@@ -81,7 +81,8 @@ class FileToolkitTest {
 
         assertThat(result).isNotNull();
         assertThat(result.isError()).isTrue();
-        assertThat(result.getTextContent()).contains("路径逃逸");
+        assertThat(result.getTextContent()).contains("没有权限");
+        assertThat(result.getTextContent()).doesNotContain("secret");
     }
 
     @Test
@@ -98,7 +99,8 @@ class FileToolkitTest {
 
         assertThat(result).isNotNull();
         assertThat(result.isError()).isTrue();
-        assertThat(result.getTextContent()).contains("路径逃逸");
+        assertThat(result.getTextContent()).contains("没有权限");
+        assertThat(result.getTextContent()).doesNotContain(tempDir.toString());
     }
 
     @Test

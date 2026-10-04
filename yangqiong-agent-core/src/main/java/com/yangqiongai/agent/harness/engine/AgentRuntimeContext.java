@@ -52,7 +52,10 @@ public class AgentRuntimeContext {
         this.sessionId = sessionId;
         this.userId = userId;
         this.interruptControl = interruptControl;
-        this.attributes = attributes != null ? new ConcurrentHashMap<>(attributes) : new ConcurrentHashMap<>();
+        // 并发映射直接共享引用：框架与引擎经类型转换构建的上下文需保持同一attributes视图，
+        // 否则引擎写入的澄清暂停快照（ATTR_PENDING_CLARIFICATION）无法随上下文透传回框架恢复链路
+        this.attributes = attributes instanceof ConcurrentHashMap ? attributes
+                : (attributes != null ? new ConcurrentHashMap<>(attributes) : new ConcurrentHashMap<>());
     }
 
     /**
@@ -184,7 +187,9 @@ public class AgentRuntimeContext {
         }
 
         public Builder attributes(Map<String, Object> attributes) {
-            this.attributes = attributes != null ? new HashMap<>(attributes) : new HashMap<>();
+            // 并发映射保留原引用以维持跨层上下文共享（澄清暂停快照透传），其余类型防御性拷贝
+            this.attributes = attributes instanceof ConcurrentHashMap ? attributes
+                    : (attributes != null ? new HashMap<>(attributes) : new HashMap<>());
             return this;
         }
 

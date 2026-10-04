@@ -52,7 +52,7 @@ public interface AgentSkillBox {
         if (isEmpty()) {
             return "";
         }
-        StringBuilder sb = new StringBuilder("Available skills:\n");
+        StringBuilder sb = new StringBuilder("# 可用技能\n\n");
         for (AgentSkill skill : getSkills()) {
             sb.append("- ").append(skill.getName());
             String desc = skill.getDescription();

@@ -34,6 +34,7 @@ import com.yangqiongai.agent.harness.core.model.AgentChatResponse;
 import com.yangqiongai.agent.harness.core.model.AgentGenerateOptions;
 import com.yangqiongai.agent.harness.core.model.AgentModel;
 import com.yangqiongai.agent.harness.core.model.protocol.AgentModelProtocolAdapter;
+import com.yangqiongai.agent.harness.exception.NonRetryableAgentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -143,7 +144,7 @@ public abstract class HttpChatModel implements AgentModel {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {
-                throw new RuntimeException("模型API返回错误码: " + response.statusCode() + ", 响应: " + response.body());
+                throw modelException(response.statusCode(), response.body());
             }
             JsonNode root = MAPPER.readTree(response.body());
             return protocolAdapter.parseNonStreamResponse(root);
@@ -186,7 +187,14 @@ public abstract class HttpChatModel implements AgentModel {
             });
             future.whenComplete((response, error) -> {
                 if (error != null) {
-                    sink.error(new RuntimeException("模型调用失败", error));
+                    Throwable root = error;
+                    while (root.getCause() != null) {
+                        root = root.getCause();
+                    }
+                    log.error("模型流式调用失败: uri={}, error={}, rootCause={}",
+                            request.uri(), error.toString(), root.toString());
+                    // 错误消息携带根因，保证trace与任务失败信息可直接定位底层原因
+                    sink.error(new RuntimeException("模型调用失败: " + root, error));
                     return;
                 }
                 if (response.statusCode() >= 400) {
@@ -198,7 +206,7 @@ public abstract class HttpChatModel implements AgentModel {
 
                     // 关闭未消费的响应体，避免HTTP连接泄漏
                     response.body().close();
-                    sink.error(new RuntimeException("模型API返回错误码: " + response.statusCode()));
+                    sink.error(modelException(response.statusCode(), null));
                     return;
                 }
                 responseRef.set(response);
@@ -237,6 +245,21 @@ public abstract class HttpChatModel implements AgentModel {
             return text;
         }
         return text.substring(0, maxLength) + "...(truncated, total=" + text.length() + " chars)";
+    }
+
+    /**
+     * 按状态码构造模型调用异常：认证/计费类错误（401/402/403）标记为不可重试终态
+     * @param statusCode
+     * @param body
+     * @return
+     */
+    private static RuntimeException modelException(int statusCode, String body) {
+        String message = "模型API返回错误码: " + statusCode
+                + (body == null ? "" : ", 响应: " + truncate(body, MAX_ERROR_LOG_LENGTH));
+        if (statusCode == 401 || statusCode == 402 || statusCode == 403) {
+            return new NonRetryableAgentException(message);
+        }
+        return new RuntimeException(message);
     }
 
     /**

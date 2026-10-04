@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import com.yangqiongai.agent.harness.durable.AgentCheckpoint;
@@ -48,6 +49,7 @@ import com.yangqiongai.agent.harness.core.message.AgentTextBlock;
 import com.yangqiongai.agent.harness.core.message.AgentToolResultBlock;
 import com.yangqiongai.agent.harness.core.message.AgentToolUseBlock;
 import com.yangqiongai.agent.harness.core.model.AgentChatResponse;
+import com.yangqiongai.agent.harness.exception.NonRetryableAgentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -247,6 +249,17 @@ public class ReActEngine extends AbstractAgentLoop {
         @SuppressWarnings("unchecked")
         List<AgentToolUseBlock> pendingCalls = (List<AgentToolUseBlock>) context.getRuntimeContext()
                 .get(ATTR_PENDING_TOOL_CALLS);
+        // 跨节点恢复：内存快照缺失时从持久检查点兜底（WAITING_APPROVAL断点保存了待确认调用与对话快照）
+        if (pendingCalls == null || pendingCalls.isEmpty()) {
+            Optional<AgentCheckpoint> checkpointOpt = loadLatestDurableCheckpoint(context);
+            if (checkpointOpt.isPresent()) {
+                AgentCheckpoint checkpoint = checkpointOpt.get();
+                pendingCalls = checkpoint.getPendingToolCalls();
+                context.getRuntimeContext().put(ATTR_PENDING_TOOL_CALLS, pendingCalls);
+                context.getRuntimeContext().put(ATTR_PENDING_CONVERSATION, checkpoint.getMessages());
+                context.getRuntimeContext().put(ATTR_PENDING_ITERATION, checkpoint.getIteration());
+            }
+        }
         if (pendingCalls == null || pendingCalls.isEmpty()) {
             return Flux.just(AgentEvent.of(AgentEventType.ERROR,
                     new IllegalStateException("无待确认的工具调用，无法恢复执行")), AgentEvent.completed());
@@ -283,6 +296,9 @@ public class ReActEngine extends AbstractAgentLoop {
         // 恢复暂停时的迭代轮次，避免重置为0导致突破maxIters限制
         Integer pendingIter = (Integer) context.getRuntimeContext().get(ATTR_PENDING_ITERATION);
         int resumeIter = pendingIter != null ? pendingIter + 1 : 1;
+        // 确认结果记入审批台账（父类统一入口）：批准的调用在工具执行时据此豁免权限判定，
+        // 避免策略门对重放调用二次ASK以"等待人工确认"卡死；拒绝的调用占位错误后不再执行
+        recordApprovalResults(confirmResults, context);
         if (approvedCalls.isEmpty()) {
             // 全部拒绝，递归进入下一轮推理
             return finishPipeline(reactLoopFlux(conversation, context, resumeIter), context);
@@ -326,6 +342,19 @@ public class ReActEngine extends AbstractAgentLoop {
         @SuppressWarnings("unchecked")
         List<AgentToolResultBlock> pendingClarifications = (List<AgentToolResultBlock>) context.getRuntimeContext()
                 .get(ATTR_PENDING_CLARIFICATION);
+        // 跨节点恢复：内存快照缺失时从持久检查点兜底（澄清断点保存了含ask_user结果的对话快照）
+        if (pendingClarifications == null || pendingClarifications.isEmpty()) {
+            Optional<AgentCheckpoint> checkpointOpt = loadLatestDurableCheckpoint(context);
+            if (checkpointOpt.isPresent()) {
+                AgentCheckpoint checkpoint = checkpointOpt.get();
+                List<AgentMessage> cpMessages = checkpoint.getMessages();
+                List<AgentToolResultBlock> clarificationResults = extractClarificationResults(cpMessages);
+                pendingClarifications = clarificationResults;
+                context.getRuntimeContext().put(ATTR_PENDING_CLARIFICATION, clarificationResults);
+                context.getRuntimeContext().put(ATTR_PENDING_CLARIFICATION_CONVERSATION, cpMessages);
+                context.getRuntimeContext().put(ATTR_PENDING_CLARIFICATION_ITERATION, checkpoint.getIteration());
+            }
+        }
         if (pendingClarifications == null || pendingClarifications.isEmpty()) {
             return Flux.just(AgentEvent.of(AgentEventType.ERROR,
                     new IllegalStateException("无待澄清的请求，无法恢复执行")), AgentEvent.completed());
@@ -645,7 +674,7 @@ public class ReActEngine extends AbstractAgentLoop {
                                 // 连续工具失败检查：成功则重置，失败则累加，超过阈值中止Agent
                                 if (isConsecutiveFailureExceeded(toolResults, context)) {
                                     return Flux.just(AgentEvent.of(AgentEventType.ERROR,
-                                            new RuntimeException("连续工具失败超过阈值: "
+                                            new NonRetryableAgentException("连续工具失败超过阈值: "
                                                     + context.getMaxConsecutiveToolFailures())),
                                             AgentEvent.completed());
                                 }

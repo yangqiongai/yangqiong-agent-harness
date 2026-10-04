@@ -179,6 +179,10 @@ public class PermissionEngine {
 
     /**
      * 判断是否为破坏性工具
+     * <p>
+     * 覆盖删除类前缀与写改类前缀（write_/edit_/update_/import_等），
+     * 文件写入、Excel/Word编辑、打包解包等落盘操作在ASK模式下均需人工确认。
+     * </p>
      * @param toolName
      * @return
      */
@@ -189,6 +193,15 @@ public class PermissionEngine {
         return toolName.startsWith("delete_")
                 || toolName.startsWith("remove_")
                 || toolName.startsWith("drop_")
+                || toolName.startsWith("truncate_")
+                || toolName.startsWith("write_")
+                || toolName.startsWith("edit_")
+                || toolName.startsWith("update_")
+                || toolName.startsWith("modify_")
+                || toolName.startsWith("rename_")
+                || toolName.startsWith("move_")
+                || toolName.startsWith("import_")
+                || toolName.startsWith("zip_")
                 || "shell".equals(toolName)
                 || toolName.startsWith("exec_");
     }

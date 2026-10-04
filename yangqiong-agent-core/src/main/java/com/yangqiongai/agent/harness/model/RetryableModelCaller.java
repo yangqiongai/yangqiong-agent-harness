@@ -91,7 +91,9 @@ public class RetryableModelCaller implements AgentModel {
                 sleepBackoff(attempt);
             }
         }
-        throw new RuntimeException("模型调用重试耗尽", lastError);
+        // 顶层消息拼接最后一次失败原因，避免消费方不解包cause时只能看到"模型调用重试耗尽"
+        String reason = lastError.getMessage() == null ? lastError.getClass().getSimpleName() : lastError.getMessage();
+        throw new RuntimeException("模型调用重试耗尽: " + reason, lastError);
     }
 
     @Override

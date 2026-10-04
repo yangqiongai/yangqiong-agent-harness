@@ -17,13 +17,15 @@ package com.yangqiongai.agent.harness.paradigms;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.yangqiongai.agent.harness.core.event.AgentEvent;
 import com.yangqiongai.agent.harness.core.event.AgentEventType;
 import com.yangqiongai.agent.harness.core.event.AgentResultEvent;
+import com.yangqiongai.agent.harness.core.event.ParadigmStageInfo;
 import com.yangqiongai.agent.harness.core.message.AgentMessage;
 import com.yangqiongai.agent.harness.core.message.AgentMessageRole;
 import com.yangqiongai.agent.harness.core.message.AgentToolUseBlock;
@@ -46,6 +48,18 @@ import reactor.core.publisher.Flux;
  * @author yangqiong
  */
 public class ReflexionEngine extends AbstractAgentLoop {
+
+    /**
+     * 评估通过标记行匹配（忽略大小写，整行仅PASS），避免bypass等含PASS子串的普通词汇误判
+     */
+    private static final Pattern PASS_LINE_PATTERN =
+            Pattern.compile("(?im)^\\s*PASS\\s*$");
+
+    /**
+     * 评估失败标记行匹配（忽略大小写，行首FAIL，兼容FAIL: 原因格式）
+     */
+    private static final Pattern FAIL_LINE_PATTERN =
+            Pattern.compile("(?im)^\\s*FAIL\\b");
 
     /**
      * 范式配置
@@ -130,7 +144,7 @@ public class ReflexionEngine extends AbstractAgentLoop {
                 return Flux.<AgentEvent>empty();
             }
             AtomicReference<AgentChatResponse> responseRef = new AtomicReference<>();
-            return callModelFlux(messages, safeToolSchemas(context), context, step, responseRef)
+            return callModelFlux(messages, safeToolSchemas(context), context, step, false, responseRef)
                     .concatWith(Flux.defer(() -> {
                         AgentMessage assistant = context.getResponseParser().parseToMessage(responseRef.get());
                         messages.add(assistant);
@@ -168,7 +182,10 @@ public class ReflexionEngine extends AbstractAgentLoop {
         evalMessages.add(answer);
         evalMessages.add(MessageFactory.createUserMessage(buildEvaluationPrompt(
                 extractUserText(originalInputs), answer.getTextContent())));
-        return callModelFlux(evalMessages, List.of(), context, attempt, evalRef)
+        // 评估为内部调用，抑制增量分片避免评估文本混入用户答案流
+        return Flux.just(AgentEvent.of(AgentEventType.PARADIGM_STAGE,
+                        new ParadigmStageInfo(ParadigmStageInfo.EVALUATE, attempt)))
+                .concatWith(callModelFlux(evalMessages, List.of(), context, attempt, true, evalRef))
                 .concatWith(Flux.defer(() -> {
                     String verdict = extractText(evalRef.get(), context.getResponseParser());
                     // 评估通过或反思次数用尽，均以当前答案收口且不报错
@@ -196,7 +213,10 @@ public class ReflexionEngine extends AbstractAgentLoop {
         AtomicReference<AgentChatResponse> reflectRef = new AtomicReference<>();
         List<AgentMessage> reflectMessages = new ArrayList<>();
         reflectMessages.add(MessageFactory.createUserMessage(buildReflectionPrompt(reason, lessons)));
-        return callModelFlux(reflectMessages, List.of(), context, attempt, reflectRef)
+        // 反思为内部调用，抑制增量分片避免教训文本混入用户答案流
+        return Flux.just(AgentEvent.of(AgentEventType.PARADIGM_STAGE,
+                        new ParadigmStageInfo(ParadigmStageInfo.REFLECT, attempt)))
+                .concatWith(callModelFlux(reflectMessages, List.of(), context, attempt, true, reflectRef))
                 .concatWith(Flux.defer(() -> {
                     String reflectionText = extractText(reflectRef.get(), context.getResponseParser());
                     if (reflectionText == null || reflectionText.isBlank()) {
@@ -211,20 +231,23 @@ public class ReflexionEngine extends AbstractAgentLoop {
     /**
      * 发起单次模型调用，经父类助手发射MODEL_CALL_START/END事件并把合并响应写入responseRef
      * <p>
-     * 单次模型调用流以父类withIterationTimeout包裹，空闲超过单轮迭代超时时中断并发射ERROR。
+     * 单次模型调用流以父类withIterationTimeout包裹，空闲超过单轮迭代超时时中断并发射ERROR；
+     * suppressDeltas为true时抑制增量分片事件，供评估与反思等内部调用使用。
      * </p>
      * @param messages
      * @param toolSchemas
      * @param context
      * @param iter 事件携带的迭代标识，仅在本地计数
+     * @param suppressDeltas 是否抑制增量分片事件
      * @param responseRef 响应输出容器
      * @return
      */
     private Flux<AgentEvent> callModelFlux(List<AgentMessage> messages, List<Map<String, Object>> toolSchemas,
-                                            EngineContext context, int iter,
+                                            EngineContext context, int iter, boolean suppressDeltas,
                                             AtomicReference<AgentChatResponse> responseRef) {
         // 单轮迭代超时包裹单次模型调用流
         return withIterationTimeout(context, withModelCallEvents(context, messages, toolSchemas, iter,
+                suppressDeltas,
                 response -> {
                     responseRef.set(response);
                     return Flux.empty();
@@ -300,7 +323,7 @@ public class ReflexionEngine extends AbstractAgentLoop {
     }
 
     /**
-     * 判断评估结论是否通过，容错规则为文本含PASS且不含FAIL
+     * 判断评估结论是否通过，行首标记匹配（整行仅PASS且无FAIL行），忽略大小写
      * @param verdict
      * @return
      */
@@ -308,12 +331,12 @@ public class ReflexionEngine extends AbstractAgentLoop {
         if (verdict == null || verdict.isBlank()) {
             return false;
         }
-        String normalized = verdict.toUpperCase(Locale.ROOT);
-        return normalized.contains("PASS") && !normalized.contains("FAIL");
+        return PASS_LINE_PATTERN.matcher(verdict).find()
+                && !FAIL_LINE_PATTERN.matcher(verdict).find();
     }
 
     /**
-     * 提取评估失败原因，取FAIL之后的文本，兼容半角与全角冒号
+     * 提取评估失败原因，取行首FAIL标记之后的文本，兼容半角与全角冒号
      * @param verdict
      * @return
      */
@@ -322,9 +345,9 @@ public class ReflexionEngine extends AbstractAgentLoop {
         if (trimmed.isEmpty()) {
             return "评估输出为空";
         }
-        int failIdx = trimmed.toUpperCase(Locale.ROOT).indexOf("FAIL");
-        if (failIdx >= 0) {
-            String reason = trimmed.substring(failIdx + 4).trim();
+        Matcher matcher = FAIL_LINE_PATTERN.matcher(trimmed);
+        if (matcher.find()) {
+            String reason = trimmed.substring(matcher.end()).trim();
             if (reason.startsWith(":") || reason.startsWith("：")) {
                 reason = reason.substring(1).trim();
             }
@@ -345,7 +368,7 @@ public class ReflexionEngine extends AbstractAgentLoop {
         return "请评估以下回答是否正确且完整地解决了用户问题。\n"
                 + "\n用户问题:\n" + question
                 + "\n待评估回答:\n" + answer
-                + "\n请严格按以下格式输出评估结论，不要输出任何其他内容:\nPASS\n或\nFAIL: 失败原因";
+                + "\n请严格按以下格式输出评估结论，第一行只输出标记，不要输出任何其他内容:\nPASS\n或\nFAIL: 失败原因";
     }
 
     /**

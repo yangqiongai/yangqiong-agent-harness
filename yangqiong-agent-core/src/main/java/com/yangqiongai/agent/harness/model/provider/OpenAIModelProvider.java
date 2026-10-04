@@ -17,6 +17,9 @@ package com.yangqiongai.agent.harness.model.provider;
 
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.yangqiongai.agent.harness.core.model.AgentModel;
 import com.yangqiongai.agent.harness.core.model.spi.AgentModelCreationContext;
 import com.yangqiongai.agent.harness.core.model.spi.AgentModelProvider;
@@ -27,6 +30,8 @@ import com.yangqiongai.agent.harness.model.OpenAIChatModel;
  * @author yangqiong
  */
 public class OpenAIModelProvider implements AgentModelProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(OpenAIModelProvider.class);
 
     /**
      * OpenAI模型名匹配正则
@@ -51,6 +56,7 @@ public class OpenAIModelProvider implements AgentModelProvider {
     public AgentModel create(String provider, String modelName, AgentModelCreationContext context) {
         String baseUrl = context.getBaseUrl() != null ? context.getBaseUrl() : "https://api.openai.com/v1";
         Integer timeoutSeconds = context.getTimeoutSeconds() != null ? context.getTimeoutSeconds() : 60;
+        log.info("创建OpenAI模型: model={}, baseUrl={}", modelName, baseUrl);
         return new OpenAIChatModel(
                 baseUrl,
                 context.getApiKey(),

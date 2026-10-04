@@ -48,19 +48,26 @@ public final class AgentToolResultBlock implements AgentContentBlock {
      */
     private final boolean clarificationRequest;
 
+    /**
+     * 澄清候选选项（ask_user 工具结构化选项，可空）
+     */
+    private final List<String> clarificationOptions;
+
     private AgentToolResultBlock(String toolUseId, List<AgentContentBlock> content, boolean error) {
-        this(toolUseId, content, error, false);
+        this(toolUseId, content, error, false, null);
     }
 
     @JsonCreator
     private AgentToolResultBlock(@JsonProperty("toolUseId") String toolUseId,
                                  @JsonProperty("content") List<AgentContentBlock> content,
                                  @JsonProperty("error") boolean error,
-                                 @JsonProperty("clarificationRequest") boolean clarificationRequest) {
+                                 @JsonProperty("clarificationRequest") boolean clarificationRequest,
+                                 @JsonProperty("clarificationOptions") List<String> clarificationOptions) {
         this.toolUseId = toolUseId;
         this.content = content != null ? List.copyOf(content) : List.of();
         this.error = error;
         this.clarificationRequest = clarificationRequest;
+        this.clarificationOptions = clarificationOptions != null ? List.copyOf(clarificationOptions) : null;
     }
 
     /**
@@ -109,8 +116,18 @@ public final class AgentToolResultBlock implements AgentContentBlock {
      * @return
      */
     public static AgentToolResultBlock clarification(String question) {
+        return clarification(question, null);
+    }
+
+    /**
+     * 创建带候选选项的澄清请求结果（前端渲染为可点击选择按钮）
+     * @param question
+     * @param options
+     * @return
+     */
+    public static AgentToolResultBlock clarification(String question, List<String> options) {
         AgentTextBlock textBlock = AgentTextBlock.builder().text(question).build();
-        return new AgentToolResultBlock(null, List.of(textBlock), false, true);
+        return new AgentToolResultBlock(null, List.of(textBlock), false, true, options);
     }
 
     /**
@@ -122,7 +139,8 @@ public final class AgentToolResultBlock implements AgentContentBlock {
         if (Objects.equals(this.toolUseId, toolUseId)) {
             return this;
         }
-        return new AgentToolResultBlock(toolUseId, this.content, this.error, this.clarificationRequest);
+        return new AgentToolResultBlock(toolUseId, this.content, this.error, this.clarificationRequest,
+                this.clarificationOptions);
     }
 
     /**
@@ -158,6 +176,14 @@ public final class AgentToolResultBlock implements AgentContentBlock {
     }
 
     /**
+     * 获取澄清候选选项
+     * @return
+     */
+    public List<String> getClarificationOptions() {
+        return clarificationOptions;
+    }
+
+    /**
      * 获取结果文本内容
      * @return
      */
@@ -183,12 +209,13 @@ public final class AgentToolResultBlock implements AgentContentBlock {
         return error == that.error
                 && clarificationRequest == that.clarificationRequest
                 && Objects.equals(toolUseId, that.toolUseId)
-                && Objects.equals(content, that.content);
+                && Objects.equals(content, that.content)
+                && Objects.equals(clarificationOptions, that.clarificationOptions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(toolUseId, content, error, clarificationRequest);
+        return Objects.hash(toolUseId, content, error, clarificationRequest, clarificationOptions);
     }
 
     @Override

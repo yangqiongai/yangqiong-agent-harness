@@ -86,7 +86,7 @@ class PermissionEngineTest {
                 .mode(AgentPermissionMode.ACCEPT_EDITS)
                 .build();
         PermissionEngine engine = new PermissionEngine(state);
-        assertThat(engine.allow("write_file")).isTrue();
+        assertThat(engine.allow("write_file")).isFalse();
         assertThat(engine.allow("delete_file")).isFalse();
         assertThat(engine.allow("shell")).isFalse();
         assertThat(engine.allow("remove_item")).isFalse();

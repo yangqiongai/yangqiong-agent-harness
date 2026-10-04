@@ -24,8 +24,10 @@ import java.util.Set;
 
 import com.yangqiongai.agent.harness.engine.MiddlewareChain;
 import com.yangqiongai.agent.harness.permission.PermissionEngine;
+import com.yangqiongai.agent.harness.permission.ToolPolicyGate;
 import com.yangqiongai.agent.harness.engine.AgentRuntimeContext;
 import com.yangqiongai.agent.harness.config.AgentPermissionContextState;
+import com.yangqiongai.agent.harness.config.AgentPermissionDecision;
 import com.yangqiongai.agent.harness.config.AgentPermissionMode;
 import com.yangqiongai.agent.harness.core.message.AgentMessage;
 import com.yangqiongai.agent.harness.core.message.AgentMessageRole;
@@ -326,6 +328,83 @@ class ToolExecutorTest {
         assertThat(block.isError()).isFalse();
         assertThat(block.getTextContent()).isEqualTo("搜索结果");
     }
+
+    @Test
+    void shouldBypassPermissionWhenLedgerApproved() {
+        HarnessToolkit toolkit = new HarnessToolkit(null);
+        toolkit.addTool(new StubTool("echo", "回显工具"));
+        ToolExecutor executor = new ToolExecutor(toolkit);
+        executor.policyGate(askGate());
+        AgentRuntimeContext context = AgentRuntimeContext.empty();
+        context.put(ATTR_TEST_LEDGER, Map.of("id1", Boolean.TRUE, "echo", Boolean.TRUE));
+        AgentToolUseBlock toolUse = new AgentToolUseBlock("echo", "id1", Map.of("text", "hi"));
+        AgentMessage result = executor.executeTool(toolUse, context, null).block();
+        AgentToolResultBlock block = (AgentToolResultBlock) result.getContent().get(0);
+        // 台账豁免后工具真实执行（桩工具返回固定文本），而非ASK占位错误
+        assertThat(block.isError()).isFalse();
+        assertThat(block.getTextContent()).isEqualTo("result");
+    }
+
+    @Test
+    void shouldBypassPermissionWhenLedgerApprovedByToolName() {
+        HarnessToolkit toolkit = new HarnessToolkit(null);
+        toolkit.addTool(new StubTool("echo", "回显工具"));
+        ToolExecutor executor = new ToolExecutor(toolkit);
+        executor.policyGate(askGate());
+        AgentRuntimeContext context = AgentRuntimeContext.empty();
+        context.put(ATTR_TEST_LEDGER, Map.of("echo", Boolean.TRUE));
+        AgentToolUseBlock toolUse = new AgentToolUseBlock("echo", "id-replayed", Map.of("text", "hi"));
+        AgentMessage result = executor.executeTool(toolUse, context, null).block();
+        AgentToolResultBlock block = (AgentToolResultBlock) result.getContent().get(0);
+        assertThat(block.isError()).isFalse();
+    }
+
+    @Test
+    void shouldDenyWhenLedgerRejected() {
+        HarnessToolkit toolkit = new HarnessToolkit(null);
+        toolkit.addTool(new StubTool("echo", "回显工具"));
+        ToolExecutor executor = new ToolExecutor(toolkit);
+        AgentRuntimeContext context = AgentRuntimeContext.empty();
+        context.put(ATTR_TEST_LEDGER, Map.of("id1", Boolean.FALSE, "echo", Boolean.FALSE));
+        AgentToolUseBlock toolUse = new AgentToolUseBlock("echo", "id1", Map.of("text", "hi"));
+        AgentMessage result = executor.executeTool(toolUse, context, null).block();
+        AgentToolResultBlock block = (AgentToolResultBlock) result.getContent().get(0);
+        assertThat(block.isError()).isTrue();
+        assertThat(block.getTextContent()).contains("人工拒绝");
+    }
+
+    @Test
+    void shouldAskWhenNoLedgerRecord() {
+        HarnessToolkit toolkit = new HarnessToolkit(null);
+        toolkit.addTool(new StubTool("echo", "回显工具"));
+        ToolExecutor executor = new ToolExecutor(toolkit);
+        executor.policyGate(askGate());
+        AgentToolUseBlock toolUse = new AgentToolUseBlock("echo", "id1", Map.of("text", "hi"));
+        AgentMessage result = executor.executeTool(toolUse, AgentRuntimeContext.empty(), null).block();
+        AgentToolResultBlock block = (AgentToolResultBlock) result.getContent().get(0);
+        assertThat(block.isError()).isTrue();
+        assertThat(block.getTextContent()).contains("等待人工确认");
+    }
+
+    /**
+     * 恒定ASK决策的策略门（匿名子类覆写evaluate）
+     * @return
+     */
+    private ToolPolicyGate askGate() {
+        return new ToolPolicyGate(null, null, null, false, null) {
+            @Override
+            public AgentPermissionDecision evaluate(String toolName, String toolCallId,
+                                                     String scopeId, String runId,
+                                                     Map<String, Object> toolInput) {
+                return AgentPermissionDecision.ASK;
+            }
+        };
+    }
+
+    /**
+     * 审批台账上下文键（与ToolExecutor/AbstractAgentLoop的键对齐，测试用字面量）
+     */
+    private static final String ATTR_TEST_LEDGER = "harness.paradigm.approvalLedger";
 
     /**
      * 桩工具

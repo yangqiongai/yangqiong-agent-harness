@@ -43,7 +43,7 @@ class ToolCatalogPromptInjectorTest {
         String result = injector.onSystemPrompt("你是助手", AgentRuntimeContext.empty());
         assertThat(result)
                 .startsWith("你是助手")
-                .contains("## 可用工具目录")
+                .contains("# 可用工具目录")
                 .contains("load_tool")
                 .contains("- query_holiday: 查询指定年份的节假日列表")
                 .contains("- query_database: 执行SQL查询");

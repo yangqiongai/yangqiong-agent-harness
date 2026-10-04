@@ -69,7 +69,7 @@ public class JdbcSessionMemory implements SessionMemory {
         if (sessionId == null) {
             return;
         }
-        summaryMapper.upsert(normalizeScope(scopeId), sessionId, summary, summarizedMessageCount);
+        summaryMapper.upsert(JdbcStoreSupport.normalize(scopeId), sessionId, summary, summarizedMessageCount);
     }
 
     @Override
@@ -83,7 +83,7 @@ public class JdbcSessionMemory implements SessionMemory {
             return null;
         }
         SessionSummaryEntity entity = summaryMapper.selectOne(Wrappers.<SessionSummaryEntity>lambdaQuery()
-                .eq(SessionSummaryEntity::getScopeId, normalizeScope(scopeId))
+                .eq(SessionSummaryEntity::getScopeId, JdbcStoreSupport.normalize(scopeId))
                 .eq(SessionSummaryEntity::getSessionId, sessionId));
         if (entity == null) {
             return null;
@@ -107,7 +107,7 @@ public class JdbcSessionMemory implements SessionMemory {
             return;
         }
         SessionEpisodeEntity entity = new SessionEpisodeEntity();
-        entity.setScopeId(normalizeScope(scopeId));
+        entity.setScopeId(JdbcStoreSupport.normalize(scopeId));
         entity.setSessionId(sessionId);
         entity.setMessage(AgentMessageSerializer.toJson(episode));
         episodeMapper.insert(entity);
@@ -130,7 +130,7 @@ public class JdbcSessionMemory implements SessionMemory {
             return Collections.emptyList();
         }
         int topK = limit > 0 ? limit : 100;
-        List<SessionEpisodeEntity> entities = episodeMapper.listLatest(normalizeScope(scopeId), sessionId, topK);
+        List<SessionEpisodeEntity> entities = episodeMapper.listLatest(JdbcStoreSupport.normalize(scopeId), sessionId, topK);
         List<AgentMessage> result = new ArrayList<>();
         for (SessionEpisodeEntity entity : entities) {
             result.add(AgentMessageSerializer.fromJson(entity.getMessage()));
@@ -151,19 +151,10 @@ public class JdbcSessionMemory implements SessionMemory {
             return;
         }
         summaryMapper.delete(Wrappers.<SessionSummaryEntity>lambdaQuery()
-                .eq(SessionSummaryEntity::getScopeId, normalizeScope(scopeId))
+                .eq(SessionSummaryEntity::getScopeId, JdbcStoreSupport.normalize(scopeId))
                 .eq(SessionSummaryEntity::getSessionId, sessionId));
         episodeMapper.delete(Wrappers.<SessionEpisodeEntity>lambdaQuery()
-                .eq(SessionEpisodeEntity::getScopeId, normalizeScope(scopeId))
+                .eq(SessionEpisodeEntity::getScopeId, JdbcStoreSupport.normalize(scopeId))
                 .eq(SessionEpisodeEntity::getSessionId, sessionId));
-    }
-
-    /**
-     * 空scope归一为""以适配非空列，与复合键语义一致
-     * @param scopeId
-     * @return
-     */
-    private String normalizeScope(String scopeId) {
-        return scopeId != null ? scopeId : "";
     }
 }

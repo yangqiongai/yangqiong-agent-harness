@@ -138,7 +138,17 @@ public class LoadToolTool implements AgentTool {
         }
         AgentTool tool = toolkit.find(toolName);
         if (tool == null) {
-            return Mono.just(AgentToolResultBlock.error("工具未找到: " + toolName));
+            // 错误反馈附带目录中尚未启用的工具名，避免LLM在名称猜测循环中耗尽token
+            String available = toolkit.getTools().stream()
+                    .filter(t -> t != null
+                            && (loadingState == null || !loadingState.isSchemaVisible(t.getName())))
+                    .map(AgentTool::getName)
+                    .distinct()
+                    .reduce((a, b) -> a + "、" + b)
+                    .orElse("（无，目录中所有工具均已启用）");
+            return Mono.just(AgentToolResultBlock.error(
+                    "工具未找到: " + toolName + "。可用工具目录仅有: " + available
+                            + "。目录之外的名称一律不存在，请勿猜测其他工具名。"));
         }
         if (loadingState != null && loadingState.isAlwaysOn(toolName)) {
             return Mono.just(AgentToolResultBlock.error("该工具已常驻可用，无需启用"));

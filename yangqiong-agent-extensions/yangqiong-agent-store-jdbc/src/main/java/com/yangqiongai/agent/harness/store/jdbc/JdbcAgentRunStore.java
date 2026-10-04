@@ -67,7 +67,11 @@ public class JdbcAgentRunStore implements AgentRunStore {
             mapper.insert(toEntity(record));
             return record;
         } catch (org.apache.ibatis.exceptions.PersistenceException e) {
-            throw new IllegalStateException("运行记录已存在: " + record.getRunId(), e);
+            // 仅主键冲突判定为重复创建，其余异常保留真实原因避免误导诊断
+            if (isDuplicateKey(e)) {
+                throw new IllegalStateException("运行记录已存在: " + record.getRunId(), e);
+            }
+            throw new IllegalStateException("运行记录创建失败: " + record.getRunId(), e);
         }
     }
 
@@ -125,6 +129,23 @@ public class JdbcAgentRunStore implements AgentRunStore {
     }
 
     /**
+     * 判断异常链是否为唯一键冲突
+     * @param e
+     * @return
+     */
+    private boolean isDuplicateKey(Throwable e) {
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause instanceof java.sql.SQLIntegrityConstraintViolationException
+                    || (cause.getMessage() != null && cause.getMessage().contains("Duplicate entry"))) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
+    }
+
+    /**
      * 运行记录转实体
      * @param record
      * @return
@@ -132,8 +153,8 @@ public class JdbcAgentRunStore implements AgentRunStore {
     private RunEntity toEntity(AgentRunRecord record) {
         RunEntity entity = new RunEntity();
         entity.setRunId(record.getRunId());
-        entity.setScopeId(record.getScopeId());
-        entity.setSessionId(record.getSessionId());
+        entity.setScopeId(JdbcStoreSupport.normalize(record.getScopeId()));
+        entity.setSessionId(JdbcStoreSupport.normalize(record.getSessionId()));
         entity.setUserId(record.getUserId());
         entity.setAgentName(record.getAgentName());
         entity.setCreatedAt(record.getCreatedAt());

@@ -256,6 +256,8 @@ public class DurableExecutionTracker {
             log.warn("等待审批状态落盘失败: runId={}", runId, e);
         }
         saveCheckpoint(context, runId, iteration, messages, askCalls, completedToolIds(context));
+        // 等待审批期间主动释放运行锁让位：多节点部署时其他节点可凭登记记录恢复续跑（恢复时ensureRunning重新抢锁）
+        unlockRunLock(runId);
     }
 
     /**

@@ -122,7 +122,7 @@ public class JdbcApprovalStore implements ApprovalStore {
         entity.setRunId(record.getRunId());
         entity.setToolCallId(record.getToolCallId());
         entity.setToolName(record.getToolName());
-        entity.setScopeId(record.getScopeId());
+        entity.setScopeId(JdbcStoreSupport.normalize(record.getScopeId()));
         entity.setApproverId(record.getApproverId());
         entity.setState(record.getState().name());
         entity.setReason(record.getReason());

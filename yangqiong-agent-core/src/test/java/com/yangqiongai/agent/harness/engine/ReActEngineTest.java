@@ -18,6 +18,7 @@ package com.yangqiongai.agent.harness.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.yangqiongai.agent.harness.core.message.MessageFactory;
+import com.yangqiongai.agent.harness.core.event.ConfirmResult;
 import com.yangqiongai.agent.harness.model.ModelCaller;
 import com.yangqiongai.agent.harness.model.ModelResponseParser;
 import com.yangqiongai.agent.harness.tool.ToolExecutor;
@@ -255,6 +257,48 @@ class ReActEngineTest {
         StepVerifier.create(engine.call(List.of(input), ctx))
                 .assertNext(msg -> assertThat(((AgentTextBlock) msg.getContent().get(0)).getText()).isEqualTo("done"))
                 .verifyComplete();
+    }
+
+    @Test
+    void shouldFillApprovalLedgerOnResume() {
+        ModelCaller modelCaller = mock(ModelCaller.class);
+        ToolExecutor toolExecutor = mock(ToolExecutor.class);
+
+        AgentTextBlock textBlock = AgentTextBlock.builder().text("done").build();
+        when(modelCaller.stream(any(), any()))
+                .thenReturn(Flux.just(new AgentChatResponse(List.of(textBlock), null)));
+        AgentToolResultBlock toolResult = AgentToolResultBlock.of(List.of(
+                AgentTextBlock.builder().text("写入完成").build()));
+        when(toolExecutor.executeTools(any(), any(), any()))
+                .thenReturn(Mono.just(List.of(MessageFactory.createToolMessage(toolResult))));
+
+        ReActEngine engine = new ReActEngine(modelCaller, toolExecutor, new MiddlewareChain(List.of()),
+                new ModelResponseParser(), null);
+
+        AgentToolUseBlock approvedCall = new AgentToolUseBlock("file_write", "call-1", Map.of("path", "a.txt"));
+        AgentToolUseBlock deniedCall = new AgentToolUseBlock("file_delete", "call-2", Map.of("path", "b.txt"));
+        AgentRuntimeContext runtime = AgentRuntimeContext.empty();
+        runtime.put("harness.paradigm.pendingToolCalls", List.of(approvedCall, deniedCall));
+        EngineContext ctx = new EngineContext(null, null, runtime, null, 10, null);
+
+        List<ConfirmResult> confirmResults = List.of(
+                ConfirmResult.approveCall("call-1", "file_write"),
+                ConfirmResult.denyCall("call-2", "file_delete", "不允许删除"));
+
+        StepVerifier.create(engine.resume(confirmResults, ctx))
+                .thenConsumeWhile(event -> true)
+                .verifyComplete();
+
+        // 批准的调用经executeTools真实执行
+        verify(toolExecutor).executeTools(any(), any(), any());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Boolean> ledger = (Map<String, Boolean>) runtime.get("harness.paradigm.approvalLedger");
+        assertThat(ledger).isNotNull();
+        assertThat(ledger.get("call-1")).isTrue();
+        assertThat(ledger.get("file_write")).isTrue();
+        assertThat(ledger.get("call-2")).isFalse();
+        assertThat(ledger.get("file_delete")).isFalse();
     }
 
     @Test

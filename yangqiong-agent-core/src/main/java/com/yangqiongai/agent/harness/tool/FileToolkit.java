@@ -123,11 +123,11 @@ public class FileToolkit {
                 ? rawPath.toAbsolutePath().normalize()
                 : sandboxRoot.resolve(rawPath).normalize();
         if (!candidate.startsWith(sandboxRoot)) {
-            throw new SecurityException("路径逃逸沙箱限制: " + raw);
+            throw new SecurityException("没有权限访问该路径");
         }
         Path realPath = toRealPathWithinSandbox(candidate);
         if (realPath == null || !realPath.startsWith(sandboxRootReal)) {
-            throw new SecurityException("路径逃逸沙箱限制: " + raw);
+            throw new SecurityException("没有权限访问该路径");
         }
         return candidate;
     }
@@ -224,8 +224,8 @@ public class FileToolkit {
          */
         @Override
         public String getDescription() {
-            return "读取沙箱工作区内文件的内容，支持纯文本与注入解析器的文档格式。"
-                    + "只能访问沙箱根目录内的文件，路径不能越出沙箱。";
+            return "读取当前工作区内文件的内容，支持纯文本与注入解析器的文档格式。"
+                    + "只能访问工作区内的文件，工作区外的路径没有访问权限。";
         }
 
         /**
@@ -239,7 +239,7 @@ public class FileToolkit {
             Map<String, Object> properties = new LinkedHashMap<>();
             Map<String, Object> pathProp = new LinkedHashMap<>();
             pathProp.put("type", "string");
-            pathProp.put("description", "要读取的文件路径（相对或绝对路径，必须位于沙箱工作区内）");
+            pathProp.put("description", "要读取的文件路径（相对工作区根的路径，必须位于工作区内）");
             properties.put("path", pathProp);
             schema.put("properties", properties);
             schema.put("required", List.of("path"));
@@ -313,8 +313,8 @@ public class FileToolkit {
          */
         @Override
         public String getDescription() {
-            return "列出沙箱工作区内指定目录下的文件与子目录（仅限沙箱根目录内）。"
-                    + "目录参数省略时列出沙箱根目录。";
+            return "列出当前工作区内指定目录下的文件与子目录（仅限工作区内）。"
+                    + "目录参数省略时列出工作区根目录。";
         }
 
         /**
@@ -328,7 +328,7 @@ public class FileToolkit {
             Map<String, Object> properties = new LinkedHashMap<>();
             Map<String, Object> pathProp = new LinkedHashMap<>();
             pathProp.put("type", "string");
-            pathProp.put("description", "要列出的目录路径（相对或绝对路径，必须位于沙箱工作区内），省略时列出沙箱根目录");
+            pathProp.put("description", "要列出的目录路径（相对工作区根的路径，必须位于工作区内），省略时列出工作区根目录");
             properties.put("path", pathProp);
             schema.put("properties", properties);
             return schema;

@@ -35,10 +35,20 @@ public class RequireUserClarificationEvent extends AgentEvent {
      */
     private final String toolCallId;
 
+    /**
+     * 候选选项列表（可空，前端渲染为可点击选择按钮）
+     */
+    private final java.util.List<String> options;
+
     public RequireUserClarificationEvent(String question, String toolCallId) {
+        this(question, toolCallId, null);
+    }
+
+    public RequireUserClarificationEvent(String question, String toolCallId, java.util.List<String> options) {
         super(AgentEventType.REQUIRE_USER_CLARIFICATION, question);
         this.question = question;
         this.toolCallId = toolCallId;
+        this.options = options;
     }
 
     /**
@@ -55,5 +65,13 @@ public class RequireUserClarificationEvent extends AgentEvent {
      */
     public String getToolCallId() {
         return toolCallId;
+    }
+
+    /**
+     * 获取候选选项列表
+     * @return
+     */
+    public java.util.List<String> getOptions() {
+        return options;
     }
 }

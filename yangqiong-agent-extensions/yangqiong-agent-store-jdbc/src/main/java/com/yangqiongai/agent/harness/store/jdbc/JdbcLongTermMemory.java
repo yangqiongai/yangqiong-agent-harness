@@ -70,7 +70,7 @@ public class JdbcLongTermMemory implements AgentLongTermMemory {
         }
         LongTermMemoryEntity entity = new LongTermMemoryEntity();
         entity.setId(UUID.randomUUID().toString());
-        entity.setScopeId(normalizeScope(scopeId));
+        entity.setScopeId(JdbcStoreSupport.normalize(scopeId));
         entity.setUserId(userId);
         entity.setSessionId(sessionId);
         entity.setContent(content);
@@ -93,7 +93,7 @@ public class JdbcLongTermMemory implements AgentLongTermMemory {
         if (tokens.isEmpty()) {
             return Collections.emptyList();
         }
-        List<LongTermMemoryEntity> entities = mapper.searchByTokens(normalizeScope(scopeId), userId, tokens);
+        List<LongTermMemoryEntity> entities = mapper.searchByTokens(JdbcStoreSupport.normalize(scopeId), userId, tokens);
         // 按命中词数排序并对空字节段做兜底排序
         List<Scored> scored = new ArrayList<>();
         for (LongTermMemoryEntity entity : entities) {
@@ -123,7 +123,7 @@ public class JdbcLongTermMemory implements AgentLongTermMemory {
         // 所有权校验：记忆必须属于当前租户作用域才允许删除
         LongTermMemoryEntity entity = mapper.selectById(memoryId);
         if (entity != null) {
-            if (!java.util.Objects.equals(entity.getScopeId(), normalizeScope(scopeId))) {
+            if (!java.util.Objects.equals(entity.getScopeId(), JdbcStoreSupport.normalize(scopeId))) {
                 throw new SecurityException("记忆删除所有权校验失败: memoryId=" + memoryId);
             }
             delete(memoryId);
@@ -184,15 +184,6 @@ public class JdbcLongTermMemory implements AgentLongTermMemory {
             }
         }
         return hits;
-    }
-
-    /**
-     * 空scope归一为""以适配非空列，与复合桶键语义一致
-     * @param scopeId
-     * @return
-     */
-    private String normalizeScope(String scopeId) {
-        return scopeId != null ? scopeId : "";
     }
 
     /**

@@ -48,11 +48,15 @@ public class SkillPromptInjector implements AgentMiddleware {
         if (skillManager == null || skillManager.isEmpty()) {
             return systemPrompt;
         }
+        String base = systemPrompt == null ? "" : systemPrompt;
+        // 技能摘要已由其他中间件注入（技能分块标题）时跳过，避免提示词出现两份技能列表
+        if (base.contains("# 可用技能")) {
+            return systemPrompt;
+        }
         String summaries = skillManager.buildSummaries();
         if (summaries == null || summaries.isBlank()) {
             return systemPrompt;
         }
-        String base = systemPrompt == null ? "" : systemPrompt;
         if (!base.isEmpty() && !base.endsWith("\n")) {
             base = base + "\n\n";
         }

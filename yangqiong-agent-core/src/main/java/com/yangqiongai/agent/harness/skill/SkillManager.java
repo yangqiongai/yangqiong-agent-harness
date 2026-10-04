@@ -92,7 +92,7 @@ public class SkillManager {
         if (isEmpty()) {
             return "";
         }
-        StringBuilder sb = new StringBuilder("可用技能:\n");
+        StringBuilder sb = new StringBuilder("# 可用技能\n\n");
         for (AgentSkill skill : getSkills()) {
             sb.append("- ").append(skill.getName());
             String summary = getSummary(skill);

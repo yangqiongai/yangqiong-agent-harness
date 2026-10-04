@@ -500,6 +500,29 @@ public abstract class AbstractAgentLoop implements AgentLoop {
     protected Flux<AgentEvent> withModelCallEvents(EngineContext context, List<AgentMessage> messages,
                                                    List<Map<String, Object>> toolSchemas, int iteration,
                                                    Function<AgentChatResponse, Flux<AgentEvent>> onResponse) {
+        return withModelCallEvents(context, messages, toolSchemas, iteration, false, onResponse);
+    }
+
+    /**
+     * 模型调用事件包裹助手（支持抑制增量分片）
+     * <p>
+     * suppressDeltas为true时不发射文本/思考/工具调用的增量分片事件，
+     * 供范式引擎的评估、反思、批评、修订等内部模型调用使用，
+     * 避免中间过程文本混入面向用户的答案流；MODEL_CALL_START/END、
+     * 用量与成本累计、预算硬控等管线行为与常规调用完全一致。
+     * </p>
+     * @param context
+     * @param messages
+     * @param toolSchemas
+     * @param iteration
+     * @param suppressDeltas 是否抑制增量分片事件
+     * @param onResponse 合并响应的后续处理函数，产出MODEL_CALL_END之后的事件
+     * @return
+     */
+    protected Flux<AgentEvent> withModelCallEvents(EngineContext context, List<AgentMessage> messages,
+                                                   List<Map<String, Object>> toolSchemas, int iteration,
+                                                   boolean suppressDeltas,
+                                                   Function<AgentChatResponse, Flux<AgentEvent>> onResponse) {
         ModelCaller caller = modelCaller(context);
         ModelResponseParser parser = responseParser(context);
         return middlewareChain(context)
@@ -514,6 +537,9 @@ public abstract class AbstractAgentLoop implements AgentLoop {
                             .concatWith(caller.stream(reasoningInput, toolSchemas)
                             .concatMap(response -> {
                                 accumulated.add(response);
+                                if (suppressDeltas) {
+                                    return Flux.<AgentEvent>empty();
+                                }
                                 List<AgentEvent> deltas = parser.parseDeltasToEvents(response, null);
                                 return Flux.fromIterable(deltas);
                             })
@@ -808,7 +834,7 @@ public abstract class AbstractAgentLoop implements AgentLoop {
      * @return
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Boolean> approvalLedger(EngineContext context) {
+    protected Map<String, Boolean> approvalLedger(EngineContext context) {
         Map<String, Boolean> ledger =
                 (Map<String, Boolean>) context.getRuntimeContext().get(ATTR_APPROVAL_LEDGER);
         if (ledger == null) {
@@ -816,6 +842,28 @@ public abstract class AbstractAgentLoop implements AgentLoop {
             context.getRuntimeContext().put(ATTR_APPROVAL_LEDGER, ledger);
         }
         return ledger;
+    }
+
+    /**
+     * 人工确认结果按toolCallId与toolName双键记入审批台账
+     * <p>
+     * 台账是重放期间权限判定的唯一豁免依据，resume的各实现必须经此方法
+     * 填充台账后再恢复执行，避免重放调用被策略门二次ASK卡死
+     * </p>
+     * @param confirmResults
+     * @param context
+     */
+    protected void recordApprovalResults(List<ConfirmResult> confirmResults, EngineContext context) {
+        Map<String, Boolean> ledger = approvalLedger(context);
+        for (ConfirmResult confirmResult : confirmResults) {
+            Boolean approved = confirmResult.isApproved();
+            if (confirmResult.getToolCallId() != null) {
+                ledger.put(confirmResult.getToolCallId(), approved);
+            }
+            if (confirmResult.getToolName() != null) {
+                ledger.put(confirmResult.getToolName(), approved);
+            }
+        }
     }
 
     /**
@@ -835,16 +883,7 @@ public abstract class AbstractAgentLoop implements AgentLoop {
                 RuntimeException error = new IllegalArgumentException("恢复执行需要携带人工确认结果");
                 return Flux.just(AgentEvent.of(AgentEventType.ERROR, error), AgentEvent.completed());
             }
-            Map<String, Boolean> ledger = approvalLedger(context);
-            for (ConfirmResult confirmResult : confirmResults) {
-                Boolean approved = confirmResult.isApproved();
-                if (confirmResult.getToolCallId() != null) {
-                    ledger.put(confirmResult.getToolCallId(), approved);
-                }
-                if (confirmResult.getToolName() != null) {
-                    ledger.put(confirmResult.getToolName(), approved);
-                }
-            }
+            recordApprovalResults(confirmResults, context);
             // 持久执行：恢复运行自WAITING_APPROVAL迁回RUNNING，并将审批决策落审批记录
             DurableExecutionTracker tracker = durableTracker(context);
             if (tracker != null && tracker.isEnabled()) {
@@ -1224,6 +1263,15 @@ public abstract class AbstractAgentLoop implements AgentLoop {
         // 对话快照与迭代轮次存入上下文，供快照续接恢复
         context.getRuntimeContext().put(ATTR_PENDING_CLARIFICATION_CONVERSATION, new ArrayList<>(messages));
         context.getRuntimeContext().put(ATTR_PENDING_CLARIFICATION_ITERATION, iteration);
+        // 持久执行：澄清断点落检查点（含ask_user结果消息，跨节点恢复按快照续接），主动释放运行锁让位
+        DurableExecutionTracker tracker = durableTracker(context);
+        if (tracker != null && tracker.isEnabled()) {
+            String runId = (String) context.getRuntimeContext().get(DurableExecutionTracker.ATTR_RUN_ID);
+            tracker.recordCompletedToolCalls(context.getRuntimeContext(), toolResults);
+            tracker.saveCheckpoint(context.getRuntimeContext(), runId, iteration, messages, List.of(),
+                    tracker.completedToolIds(context.getRuntimeContext()));
+            tracker.unlockRunLock(runId);
+        }
         return clarificationPauseFlux(clarificationResults, toolResults, context);
     }
 
@@ -1253,7 +1301,8 @@ public abstract class AbstractAgentLoop implements AgentLoop {
         // 发射需要用户澄清事件，暂停循环等待答案
         List<AgentEvent> events = new ArrayList<>();
         for (AgentToolResultBlock result : clarificationResults) {
-            events.add(new RequireUserClarificationEvent(result.getTextContent(), result.getToolUseId()));
+            events.add(new RequireUserClarificationEvent(result.getTextContent(), result.getToolUseId(),
+                    result.getClarificationOptions()));
         }
         return Flux.just(AgentEvent.of(AgentEventType.TOOL_CALL_END, toolResults))
                 .concatWith(Flux.fromIterable(events));

@@ -32,6 +32,8 @@ import java.util.function.Function;
 import com.yangqiongai.agent.harness.core.event.AgentEvent;
 import com.yangqiongai.agent.harness.core.event.AgentEventType;
 import com.yangqiongai.agent.harness.core.event.AgentResultEvent;
+import com.yangqiongai.agent.harness.core.event.AgentTextBlockDeltaEvent;
+import com.yangqiongai.agent.harness.core.event.ParadigmStageInfo;
 import com.yangqiongai.agent.harness.core.message.AgentMessage;
 import com.yangqiongai.agent.harness.core.message.AgentMessageRole;
 import com.yangqiongai.agent.harness.core.message.AgentTextBlock;
@@ -387,5 +389,92 @@ class ReflexionEngineTest {
         // 熔断ERROR之后不再有第二次TOOL_CALL_END
         assertThat(types.subList(secondStart + 1, types.size()))
                 .doesNotContain(AgentEventType.TOOL_CALL_END);
+    }
+
+    /**
+     * 内部调用流式抑制：评估与反思的文本不得作为TEXT_BLOCK_DELTA发射，基础循环答案仍正常流式
+     */
+    @Test
+    void shouldNotEmitTextDeltaFromInternalCalls() {
+        stubResponses(
+                textResponse("首次答案"),
+                textResponse("FAIL: 首次回答遗漏关键约束"),
+                textResponse("反思教训文本"),
+                textResponse("修正后的答案"),
+                textResponse("PASS"));
+
+        ReflexionEngine engine = new ReflexionEngine();
+        List<AgentEvent> events = engine.run(
+                List.of(MessageFactory.createUserMessage("请解决问题")), context)
+                .collectList().block();
+
+        assertThat(events).isNotNull();
+        List<String> deltaTexts = events.stream()
+                .filter(event -> event.getType() == AgentEventType.TEXT_BLOCK_DELTA)
+                .map(event -> ((AgentTextBlockDeltaEvent) event).getDelta())
+                .toList();
+        assertThat(deltaTexts).anyMatch(text -> text.contains("首次答案"));
+        assertThat(deltaTexts).anyMatch(text -> text.contains("修正后的答案"));
+        assertThat(deltaTexts).noneMatch(text -> text.contains("FAIL")
+                || text.contains("反思教训文本"));
+    }
+
+    /**
+     * 标记判定加固：评估文本含PASS子串（bypass）但不构成独立PASS行时判为未通过并触发反思重试
+     */
+    @Test
+    void shouldTreatPassSubstringAsFailVerdict() {
+        stubResponses(
+                textResponse("初次答案"),
+                textResponse("该方案采用bypass策略，覆盖不全"),
+                textResponse("教训：需要完整覆盖"),
+                textResponse("改进后答案"),
+                textResponse("PASS"));
+
+        ReflexionEngine engine = new ReflexionEngine();
+        List<AgentEvent> events = engine.run(
+                List.of(MessageFactory.createUserMessage("请解决问题")), context)
+                .collectList().block();
+
+        assertThat(events).isNotNull();
+        AgentEvent resultEvent = events.get(events.size() - 2);
+        assertThat(resultEvent).isInstanceOf(AgentResultEvent.class);
+        assertThat(((AgentResultEvent) resultEvent).getResult().getTextContent())
+                .isEqualTo("改进后答案");
+        // 首次评估被正确判为未通过，触发反思与重试共5次模型调用
+        assertThat(recordedMessages).hasSize(5);
+        assertThat(recordedMessages.get(2))
+                .anyMatch(msg -> msg.getTextContent().contains("bypass策略，覆盖不全"));
+    }
+
+    /**
+     * 阶段事件：评估与反思阶段各发射PARADIGM_STAGE事件，轮次随反思递增
+     */
+    @Test
+    void shouldEmitParadigmStageEventsInOrder() {
+        stubResponses(
+                textResponse("首次答案"),
+                textResponse("FAIL: 首次回答遗漏关键约束"),
+                textResponse("反思教训文本"),
+                textResponse("修正后的答案"),
+                textResponse("PASS"));
+
+        ReflexionEngine engine = new ReflexionEngine();
+        List<AgentEvent> events = engine.run(
+                List.of(MessageFactory.createUserMessage("请解决问题")), context)
+                .collectList().block();
+
+        assertThat(events).isNotNull();
+        List<ParadigmStageInfo> stages = events.stream()
+                .filter(event -> event.getType() == AgentEventType.PARADIGM_STAGE)
+                .map(event -> (ParadigmStageInfo) event.getPayload())
+                .toList();
+        assertThat(stages).hasSize(3);
+        assertThat(stages.get(0).getStage()).isEqualTo(ParadigmStageInfo.EVALUATE);
+        assertThat(stages.get(0).getAttempt()).isZero();
+        assertThat(stages.get(1).getStage()).isEqualTo(ParadigmStageInfo.REFLECT);
+        assertThat(stages.get(1).getAttempt()).isZero();
+        assertThat(stages.get(2).getStage()).isEqualTo(ParadigmStageInfo.EVALUATE);
+        assertThat(stages.get(2).getAttempt()).isEqualTo(1);
     }
 }
