@@ -36,7 +36,7 @@
 <dependency>
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -48,7 +48,7 @@
         <dependency>
             <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-bom</artifactId>
-            <version>1.1.0</version>
+            <version>1.1.1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -673,7 +673,7 @@ mvn test -Dtest=NewFeatureRealModelTest
 <dependency>
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-paradigms</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -738,7 +738,7 @@ Spring Boot 3 项目可引入 `yangqiong-agent-spring-boot-starter`，以 `ai.ha
 <dependency>
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-spring-boot-starter</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 

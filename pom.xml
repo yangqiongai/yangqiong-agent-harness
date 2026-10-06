@@ -6,11 +6,11 @@
 
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-harness</artifactId>
-    <version>1.1.1-SNAPSHOT</version>
+    <version>1.1.1</version>
     <packaging>pom</packaging>
 
     <name>yangqiong-agent-harness</name>
-    <description>泱穹智能体框架（Yangqiong Agent Harness）多模块聚合工程</description>
+    <description>泱穹智能体框架（YangQiong Agent Harness）多模块聚合工程</description>
     <url>https://github.com/yangqiongai/yangqiong-agent-harness</url>
 
     <licenses>
@@ -50,7 +50,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- 可复现构建时间戳（Maven Central 校验工具推荐项） -->
-        <project.build.outputTimestamp>2026-09-08T16:13:34Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-10-06T00:00:00Z</project.build.outputTimestamp>
 
         <reactor.version>3.7.8</reactor.version>
         <slf4j.version>2.0.17</slf4j.version>

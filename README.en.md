@@ -4,9 +4,9 @@ English | [中文](./README.md)
 ![JDK](https://img.shields.io/badge/JDK-17-orange.svg)
 ![Gitee](https://gitee.com/yangqiongai/yangqiong-agent-harness/badge/star.svg)
 
-# Yangqiong Agent Harness
+# YangQiong Agent Harness
 
-> **Yangqiong Agent Harness** is an **out-of-the-box enterprise-grade AI Agent runtime framework** built in **pure Java (JDK 17)**: **ReAct loop + 6 paradigm engines with auto-routing, sub-agent and multi-agent orchestration, checkpoint-based durable execution, permission & safety guardrails, full-link observability and evaluation** — **zero Spring dependency**, driven by reactive event streams (Project Reactor).
+> **YangQiong Agent Harness** is an **out-of-the-box enterprise-grade AI Agent runtime framework** built in **pure Java (JDK 17)**: **ReAct loop + 6 paradigm engines with auto-routing, sub-agent and multi-agent orchestration, checkpoint-based durable execution, permission & safety guardrails, full-link observability and evaluation** — **zero Spring dependency**, driven by reactive event streams (Project Reactor).
 >
 > From model integration, tool execution and memory management to multi-agent orchestration, evaluation and production governance, it provides a one-stop runtime foundation for building **stable, controllable, observable and extensible** agent applications in large enterprises.
 
@@ -14,7 +14,7 @@ English | [中文](./README.md)
 
 ## Built for Enterprise Java
 
-The real proving ground for agents is the enterprise production environment: integrating with legacy systems, passing security & compliance audits, and fitting into existing engineering systems. Yangqiong Agent Harness is natively built on Java, so your existing investments become the capability foundation of your agents:
+The real proving ground for agents is the enterprise production environment: integrating with legacy systems, passing security & compliance audits, and fitting into existing engineering systems. YangQiong Agent Harness is natively built on Java, so your existing investments become the capability foundation of your agents:
 
 ### 1. Mature engineering ecosystem, lower delivery risk
 
@@ -26,7 +26,7 @@ The real proving ground for agents is the enterprise production environment: int
 
 ### 3. Natural integration with Java enterprise systems
 
-- Enterprises run on **Java**: Spring stacks, microservices, middleware (MQ, caching, distributed transactions), ORM data layers, ERP/CRM core systems. Yangqiong integrates with **zero rewriting** — via Java tools and MCP, agents orchestrate existing enterprise services like local method calls, injecting LLM intelligence straight into core business flows.
+- Enterprises run on **Java**: Spring stacks, microservices, middleware (MQ, caching, distributed transactions), ORM data layers, ERP/CRM core systems. YangQiong integrates with **zero rewriting** — via Java tools and MCP, agents orchestrate existing enterprise services like local method calls, injecting LLM intelligence straight into core business flows.
 
 ### 4. Proven concurrency & performance foundation
 
@@ -44,7 +44,7 @@ The real proving ground for agents is the enterprise production environment: int
 
 For the past two years Python dominated agent development and Java developers had to hand-stitch HTTP calls. **As of 2026**, that has changed: Java now has multiple production-ready frameworks:
 
-| Dimension | **Yangqiong Agent Harness** | Spring AI | LangChain4j | AgentScope (Java) |
+| Dimension | **YangQiong Agent Harness** | Spring AI | LangChain4j | AgentScope (Java) |
 | --- | --- | --- | --- | --- |
 | Positioning | **Enterprise Java agent runtime** | Official Spring AI ecosystem | Framework-agnostic, 20+ model providers | Alibaba multi-agent framework |
 | Form | ✅ **Out-of-the-box agent framework** | ⚠️ Tool/assembly | ⚠️ Tool/assembly | ✅ Agent framework |
@@ -78,9 +78,9 @@ Mature frameworks make calling LLMs from Java easy, but for **real high-value pr
 - **Missing production governance** — multi-turn sessions lack cost budgets, token metering, rate limiting, model routing/fallback; distributed run locks and consistent cross-node scheduling are rare.
 - **Orchestration stuck at "single agent + tools"** — multi-agent handoff, automatic task orchestration, sub-agent mutual exclusion and result aggregation are often borrowed concepts without fine-grained state machines and governance.
 
-### 3. Yangqiong: closing the "last mile"
+### 3. YangQiong: closing the "last mile"
 
-Yangqiong Agent Harness is designed against these gaps — **complementary, not reinventing the wheel**:
+YangQiong Agent Harness is designed against these gaps — **complementary, not reinventing the wheel**:
 
 - ✅ **Zero framework coupling** — no Spring required; runs on pure Java SE, and fits naturally into Spring Boot / Quarkus / microservice environments alike
 - ✅ **Native durable execution** — `AgentRunStore` / `CheckpointStore` checkpoint resume, `RunLockStore` distributed mutual exclusion for cross-node consistent scheduling
@@ -89,13 +89,13 @@ Yangqiong Agent Harness is designed against these gaps — **complementary, not 
 - ✅ **Mature multi-agent orchestration** — sub-agent delegation, 6-strategy orchestration, handoff, result aggregation, backed by state machines and the permission system
 - ✅ **Strong engineering guarantees** — static typing, compile-time validation, 900+ unit tests (100+ test classes) in core alone, dual-judge evaluation and full-link observability
 
-> In short: Spring AI and LangChain4j answer "can Java call an LLM"; Yangqiong Agent Harness answers "can it run **stably and controllably into enterprise production**".
+> In short: Spring AI and LangChain4j answer "can Java call an LLM"; YangQiong Agent Harness answers "can it run **stably and controllably into enterprise production**".
 
 ### 4. Benchmarking against mainstream Python agent frameworks: full parity at the core
 
-Benchmarked item by item against the de-facto Python standards of 2026 (LangGraph as the durable-execution benchmark, CrewAI as the role-based orchestration representative, OpenAI Agents SDK as the lightweight official reference), Yangqiong Agent Harness reaches **full parity at the core agent-runtime dimensions and holds an edge in several**:
+Benchmarked item by item against the de-facto Python standards of 2026 (LangGraph as the durable-execution benchmark, CrewAI as the role-based orchestration representative, OpenAI Agents SDK as the lightweight official reference), YangQiong Agent Harness reaches **full parity at the core agent-runtime dimensions and holds an edge in several**:
 
-| Capability | Yangqiong Agent Harness | Mainstream Python frameworks (LangGraph / CrewAI / OpenAI SDK) | Verdict |
+| Capability | YangQiong Agent Harness | Mainstream Python frameworks (LangGraph / CrewAI / OpenAI SDK) | Verdict |
 | --- | --- | --- | --- |
 | Durable execution | ✅ **4 stores × 4 implementations** (RunStore/CheckpointStore/RunLockStore/ApprovalStore × InMemory/SQLite/JDBC/Redis) | Only LangGraph has built-in checkpointing; CrewAI & OpenAI SDK have none | Par with LangGraph, plus cross-node run lock |
 | Human-in-the-loop | ✅ **Approval pause + ledger resume, ask_user clarification resume — closed loop** | First-class in LangGraph; OpenAI SDK has session memory only | Par or slightly ahead (more complete resume loop) |
@@ -130,7 +130,7 @@ Benchmarked item by item against the de-facto Python standards of 2026 (LangGrap
 
 ## Architecture
 
-![Yangqiong Agent Harness layered architecture](https://yangqiong-1306352078.cos.ap-shanghai.myqcloud.com/website/biz/architecture-overview.jpg)
+![YangQiong Agent Harness layered architecture](https://yangqiong-1306352078.cos.ap-shanghai.myqcloud.com/website/biz/architecture-overview.jpg)
 
 ***
 
@@ -156,7 +156,7 @@ Benchmarked item by item against the de-facto Python standards of 2026 (LangGrap
 
 ## Modules
 
-Yangqiong Agent Harness is a **Maven multi-module project** — the core has zero Spring, adapters and extensions ship independently:
+YangQiong Agent Harness is a **Maven multi-module project** — the core has zero Spring, adapters and extensions ship independently:
 
 | Module | Artifact | Purpose |
 | --- | --- | --- |
@@ -191,7 +191,7 @@ Yangqiong Agent Harness is a **Maven multi-module project** — the core has zer
 <dependency>
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -205,7 +205,7 @@ Yangqiong Agent Harness is a **Maven multi-module project** — the core has zer
         <dependency>
             <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-bom</artifactId>
-            <version>1.1.0</version>
+            <version>1.1.1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>

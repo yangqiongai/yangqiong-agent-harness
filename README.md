@@ -4,7 +4,7 @@
 ![JDK](https://img.shields.io/badge/JDK-17-orange.svg)
 ![Gitee](https://gitee.com/yangqiongai/yangqiong-agent-harness/badge/star.svg)
 
-# 泱穹智能体开发框架（Yangqiong Agent Harness）
+# 泱穹智能体框架（YangQiong Agent Harness）
 
 > **泱穹智能体框架** 是一套用**纯 Java** 构建的**开箱即用的企业级 AI Agent 运行时框架**：**ReAct 循环 + 六大范式引擎（含自动路由）、子代理与多代理编排、断点持久化执行、权限与安全护栏、全链路可观测与评测**，**零 Spring 依赖**，基于 Reactor 响应式事件流驱动。
 >
@@ -196,7 +196,7 @@
 <dependency>
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-core</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -210,7 +210,7 @@
         <dependency>
             <groupId>com.yangqiongai.agent</groupId>
             <artifactId>yangqiong-agent-bom</artifactId>
-            <version>1.1.0</version>
+            <version>1.1.1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
