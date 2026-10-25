@@ -6,7 +6,7 @@
 
     <groupId>com.yangqiongai.agent</groupId>
     <artifactId>yangqiong-agent-harness</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>yangqiong-agent-harness</name>

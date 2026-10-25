@@ -248,7 +248,8 @@ public final class LocalAgentHarness {
             return new ResolvedModel(model, baseUrl, config.modelName(), ollamaEndpoint);
         }
 
-        List<LocalModelEndpoint> endpoints = new LocalModelDiscoverer(config.extraEndpointBaseUrls()).discover();
+        List<LocalModelEndpoint> endpoints = new LocalModelDiscoverer(config.extraEndpointBaseUrls(),
+                config.discoverDefaultEndpoints()).discover();
         if (endpoints.isEmpty()) {
             throw new IllegalStateException("未发现可用的本地模型服务，请先安装并启动 Ollama（https://ollama.com）"
                     + " 或 LM Studio（https://lmstudio.ai），或通过 endpointBaseUrl 与 modelName 显式指定端点");

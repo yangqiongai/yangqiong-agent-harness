@@ -93,7 +93,18 @@ public class LocalModelDiscoverer {
      * @param extraOpenAiCompatibleBaseUrls
      */
     public LocalModelDiscoverer(List<String> extraOpenAiCompatibleBaseUrls) {
-        this(DEFAULT_OLLAMA_BASE_URL, mergeBaseUrls(extraOpenAiCompatibleBaseUrls));
+        this(extraOpenAiCompatibleBaseUrls, true);
+    }
+
+    /**
+     * 构造本地模型发现器，可选关闭默认候选端点探测，仅探测指定的额外端点
+     * @param extraOpenAiCompatibleBaseUrls
+     * @param discoverDefaultEndpoints 关闭后不再探测Ollama与LM Studio/llama.cpp默认候选
+     */
+    public LocalModelDiscoverer(List<String> extraOpenAiCompatibleBaseUrls, boolean discoverDefaultEndpoints) {
+        this(discoverDefaultEndpoints ? DEFAULT_OLLAMA_BASE_URL : null,
+                discoverDefaultEndpoints ? mergeBaseUrls(extraOpenAiCompatibleBaseUrls)
+                        : copyNonBlank(extraOpenAiCompatibleBaseUrls));
     }
 
     /**
@@ -135,6 +146,9 @@ public class LocalModelDiscoverer {
      * @return 端点不可达时返回null
      */
     private LocalModelEndpoint probeOllama(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return null;
+        }
         String normalized = normalizeBaseUrl(baseUrl);
         try {
             JsonNode root = httpGetJson(normalized + "/api/tags");
@@ -220,6 +234,21 @@ public class LocalModelDiscoverer {
             }
         }
         return List.copyOf(merged);
+    }
+
+    /**
+     * 复制非空白端点地址并规范化，不含默认候选
+     * @param baseUrls
+     * @return
+     */
+    private static List<String> copyNonBlank(List<String> baseUrls) {
+        if (baseUrls == null || baseUrls.isEmpty()) {
+            return List.of();
+        }
+        return baseUrls.stream()
+                .filter(baseUrl -> baseUrl != null && !baseUrl.isBlank())
+                .map(LocalModelDiscoverer::normalizeBaseUrl)
+                .toList();
     }
 
     /**

@@ -105,6 +105,22 @@ class LocalModelDiscovererTest {
         });
     }
 
+    @Test
+    void shouldProbeOnlyExtraEndpointsWhenDefaultsDisabled() {
+        LocalModelDiscoverer discoverer = new LocalModelDiscoverer(
+                List.of("http://localhost:" + port + "/v1"), false);
+        List<LocalModelEndpoint> endpoints = discoverer.discover();
+        assertThat(endpoints).hasSize(1);
+        assertThat(endpoints.get(0).baseUrl()).isEqualTo("http://localhost:" + port + "/v1");
+        assertThat(endpoints.get(0).models()).containsExactly("qwen2.5");
+    }
+
+    @Test
+    void shouldReturnEmptyWhenDefaultsDisabledAndNoExtraEndpoints() {
+        LocalModelDiscoverer discoverer = new LocalModelDiscoverer(List.of(), false);
+        assertThat(discoverer.discover()).isEmpty();
+    }
+
     /**
      * 注册返回固定JSON响应的上下文
      * @param path

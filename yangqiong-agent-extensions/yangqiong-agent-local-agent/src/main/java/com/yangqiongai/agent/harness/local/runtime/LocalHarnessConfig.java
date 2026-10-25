@@ -71,6 +71,11 @@ public class LocalHarnessConfig {
     private final List<String> extraEndpointBaseUrls;
 
     /**
+     * 是否探测默认候选端点（Ollama与LM Studio/llama.cpp常用端口），关闭后仅探测 extraEndpointBaseUrls
+     */
+    private final boolean discoverDefaultEndpoints;
+
+    /**
      * 是否注册本地Shell工具
      */
     private final boolean shellEnabled;
@@ -171,6 +176,7 @@ public class LocalHarnessConfig {
         this.modelName = blankToNull(builder.modelName);
         this.endpointApiKey = blankToNull(builder.endpointApiKey);
         this.extraEndpointBaseUrls = List.copyOf(builder.extraEndpointBaseUrls);
+        this.discoverDefaultEndpoints = builder.discoverDefaultEndpoints;
         this.shellEnabled = builder.shellEnabled;
         this.shellTimeout = builder.shellTimeout;
         this.shellRequireApproval = builder.shellRequireApproval;
@@ -245,6 +251,14 @@ public class LocalHarnessConfig {
      */
     public List<String> extraEndpointBaseUrls() {
         return extraEndpointBaseUrls;
+    }
+
+    /**
+     * 是否探测默认候选端点，关闭后仅探测 extraEndpointBaseUrls
+     * @return
+     */
+    public boolean discoverDefaultEndpoints() {
+        return discoverDefaultEndpoints;
     }
 
     /**
@@ -437,6 +451,11 @@ public class LocalHarnessConfig {
         private List<String> extraEndpointBaseUrls = new ArrayList<>();
 
         /**
+         * 是否探测默认候选端点，默认开启
+         */
+        private boolean discoverDefaultEndpoints = true;
+
+        /**
          * 是否注册本地Shell工具
          */
         private boolean shellEnabled = true;
@@ -596,6 +615,16 @@ public class LocalHarnessConfig {
             if (extraEndpointBaseUrl != null && !extraEndpointBaseUrl.isBlank()) {
                 this.extraEndpointBaseUrls.add(extraEndpointBaseUrl);
             }
+            return this;
+        }
+
+        /**
+         * 设置是否探测默认候选端点，关闭后仅探测 extraEndpointBaseUrls
+         * @param discoverDefaultEndpoints
+         * @return
+         */
+        public Builder discoverDefaultEndpoints(boolean discoverDefaultEndpoints) {
+            this.discoverDefaultEndpoints = discoverDefaultEndpoints;
             return this;
         }
 

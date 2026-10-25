@@ -20,12 +20,16 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
+import com.sun.net.httpserver.HttpServer;
 import com.yangqiongai.agent.harness.config.AgentApprovalMode;
 import com.yangqiongai.agent.harness.local.workspace.LocalWorkspace;
 import org.junit.jupiter.api.Test;
@@ -52,6 +56,7 @@ class LocalAgentHarnessTest {
         int freePort = findFreePort();
         LocalHarnessConfig config = LocalHarnessConfig.builder()
                 .rootDir(tempDir)
+                .discoverDefaultEndpoints(false)
                 .addExtraEndpointBaseUrl("http://localhost:" + freePort + "/v1")
                 .build();
 
@@ -59,6 +64,34 @@ class LocalAgentHarnessTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Ollama")
                 .hasMessageContaining("LM Studio");
+    }
+
+    @Test
+    void shouldThrowWithPullHintWhenEndpointReachableButNoModelInstalled() throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/v1/models", exchange -> {
+            byte[] body = "{\"data\":[]}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(body);
+            }
+        });
+        server.start();
+        try {
+            int port = server.getAddress().getPort();
+            LocalHarnessConfig config = LocalHarnessConfig.builder()
+                    .rootDir(tempDir)
+                    .discoverDefaultEndpoints(false)
+                    .addExtraEndpointBaseUrl("http://localhost:" + port + "/v1")
+                    .build();
+
+            assertThatThrownBy(() -> LocalAgentHarness.create(config))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("未安装任何模型");
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test
